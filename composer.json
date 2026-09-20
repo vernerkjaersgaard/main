@@ -1,0 +1,15 @@
+{
+    "name": "vk/public",
+    "autoload": {
+        "psr-4": {
+            "Vk\\Public\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "vernerkjaersgaard",
+            "email": "vk@studiobornholm.dk"
+        }
+    ],
+    "require": {}
+}
