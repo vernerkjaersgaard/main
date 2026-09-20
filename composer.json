@@ -11,5 +11,7 @@
             "email": "vk@studiobornholm.dk"
         }
     ],
-    "require": {}
+    "require": {
+        "intervention/image": "^3.11"
+    }
 }
