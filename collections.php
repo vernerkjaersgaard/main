@@ -27,6 +27,9 @@ require_once __DIR__ . '/header.php';
 
 <p><a href="projects.php">&larr; My Projects</a></p>
 <h1><?= htmlspecialchars($project['project_name']) ?></h1>
+<?php if (isset($_GET['collection_deleted'])): ?>
+    <p style="color:green;">Collection deleted.</p>
+<?php endif; ?>
 
 <p><a href="create_collection.php?project_id=<?= $project_id ?>" role="button">+ New Collection</a></p>
 
@@ -37,21 +40,29 @@ require_once __DIR__ . '/header.php';
 <?php else: ?>
 
     <table>
-        <thead>
+    <thead>
+        <tr>
+            <th>Collection Name</th>
+            <th>Created</th>
+            <th></th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php foreach ($collections as $collection): ?>
             <tr>
-                <th>Collection Name</th>
-                <th>Created</th>
+                <td><a href="upload.php?collection_id=<?= (int)$collection['collection_id'] ?>"><?= htmlspecialchars($collection['collection_name']) ?></a></td>
+                <td><?= htmlspecialchars($collection['date_of_creation']) ?></td>
+                <td>
+                    <form method="post" action="delete_collection.php" onsubmit="return confirm('Delete the collection &quot;<?= htmlspecialchars($collection['collection_name'], ENT_QUOTES) ?>&quot; and all its images? This cannot be undone.');" style="display:inline;">
+                        <input type="hidden" name="collection_id" value="<?= (int)$collection['collection_id'] ?>">
+                        <button type="submit" class="secondary">Delete</button>
+                    </form>
+                </td>
             </tr>
-        </thead>
-        <tbody>
-            <?php foreach ($collections as $collection): ?>
-                <tr>
-                    <td><a href="upload.php?collection_id=<?= (int)$collection['collection_id'] ?>"><?= htmlspecialchars($collection['collection_name']) ?></a></td>
-                    <td><?= htmlspecialchars($collection['date_of_creation']) ?></td>
-                </tr>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
+        <?php endforeach; ?>
+    </tbody>
+</table>
 
 <?php endif; ?>
 

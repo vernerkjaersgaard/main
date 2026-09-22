@@ -49,7 +49,8 @@ if (!is_dir($thumbs_dir))
 }
 
 $allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-$max_file_size = 10 * 1024 * 1024; // 10 MB
+//$max_file_size = 10 * 1024 * 1024; // 10 MB
+$max_file_size = 80 * 1024 * 1024; // 50 MB
 
 
 $upload_errors = [];
@@ -178,11 +179,14 @@ require_once __DIR__ . '/header.php';
     </p>
 <?php endif; ?>
 
-<form method="post" enctype="multipart/form-data">
+<form method="post" enctype="multipart/form-data" id="upload-form">
     <label>Upload images
         <input type="file" name="images[]" accept="image/jpeg,image/png,image/gif,image/webp" multiple required>
     </label>
-    <button type="submit">Upload</button>
+    <button type="submit" id="upload-btn">Upload</button>
+    <p id="upload-status" style="display:none;">
+        <progress></progress> Uploading, please wait&hellip; this may take a while for large or many files.
+    </p>
 </form>
 
 <hr>
@@ -220,7 +224,7 @@ require_once __DIR__ . '/header.php';
 
                         <img src="image.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($image) ?>&size=thumb"
                              alt="<?= htmlspecialchars($image) ?>"
-                             style="width:100%; border-radius:8px;">
+                             class="thumbnail">
                     </a>
                 </div>
             <?php endforeach; ?>
@@ -251,6 +255,20 @@ document.getElementById('gallery-form')?.addEventListener('submit', function (e)
     {
         e.preventDefault();
     }
+});
+</script>
+<script>
+document.getElementById('upload-form')?.addEventListener('submit', function (e)
+{
+    const fileInput = this.querySelector('input[type="file"]');
+
+    if (fileInput.files.length === 0)
+    {
+        return; // let the browser's own "required" validation handle this
+    }
+
+    document.getElementById('upload-btn').disabled = true;
+    document.getElementById('upload-status').style.display = 'block';
 });
 </script>
 

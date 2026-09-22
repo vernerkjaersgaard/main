@@ -66,7 +66,7 @@ require_once __DIR__ . '/header.php';
 <div style="text-align:center;">
     <img src="image.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($safe_current) ?>&size=full"
          alt="<?= htmlspecialchars($safe_current) ?>"
-         style="max-width:100%; max-height:80vh; border-radius:8px;">
+         class="full-image">
 </div>
 
 <p style="text-align:center;">
