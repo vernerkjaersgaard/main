@@ -7,7 +7,6 @@ $collection_id = (int)($_POST['collection_id'] ?? 0);
 $action = $_POST['gallery_action'] ?? '';
 $ticked = $_POST['ticked'] ?? [];
 
-// Verify this collection exists AND belongs (via its project) to the logged-in user
 $stmt = $pdo->prepare("
     SELECT c.storage_path
     FROM tb_collections c
@@ -23,28 +22,65 @@ if (!$collection)
     exit('Collection not found.');
 }
 
-// Server-side re-validation — never trust the client-side JS checks alone
 if (empty($ticked) || !is_array($ticked))
 {
     header('Location: upload.php?collection_id=' . $collection_id . '&error=nothing_ticked');
     exit;
 }
 
-// Sanitize every filename the same way image.php does — basename() strips
-// any directory components, blocking path traversal attempts entirely.
-$safe_files = [];
+$candidate_files = [];
 foreach ($ticked as $filename)
 {
     $safe = basename($filename);
     if ($safe !== '' && $safe === $filename)
     {
-        $safe_files[] = $safe;
+        $candidate_files[] = $safe;
     }
 }
 
-if (empty($safe_files))
+if (empty($candidate_files))
 {
     header('Location: upload.php?collection_id=' . $collection_id . '&error=invalid_selection');
+    exit;
+}
+
+$placeholders = implode(',', array_fill(0, count($candidate_files), '?'));
+$stmt = $pdo->prepare("
+    SELECT image_id, stored_filename
+    FROM tb_images
+    WHERE collection_id = ? AND status = 'complete' AND stored_filename IN ($placeholders)
+");
+$stmt->execute(array_merge([$collection_id], $candidate_files));
+$valid_images = $stmt->fetchAll();
+
+if (empty($valid_images))
+{
+    header('Location: upload.php?collection_id=' . $collection_id . '&error=invalid_selection');
+    exit;
+}
+
+$safe_files = array_column($valid_images, 'stored_filename');
+$image_ids = array_column($valid_images, 'image_id');
+
+// ---------------------------------------------------------------
+// TAG
+// ---------------------------------------------------------------
+if ($action === 'tag')
+{
+    $allowed_colors = ['none', 'red', 'green', 'blue', 'yellow', 'purple'];
+    $tag_color = $_POST['tag_color'] ?? '';
+
+    if (!in_array($tag_color, $allowed_colors, true))
+    {
+        header('Location: upload.php?collection_id=' . $collection_id . '&error=invalid_color');
+        exit;
+    }
+
+    $id_placeholders = implode(',', array_fill(0, count($image_ids), '?'));
+    $update = $pdo->prepare("UPDATE tb_images SET tag_color = ? WHERE image_id IN ($id_placeholders)");
+    $update->execute(array_merge([$tag_color], $image_ids));
+
+    header('Location: upload.php?collection_id=' . $collection_id . '&tagged=' . count($image_ids));
     exit;
 }
 
@@ -55,6 +91,7 @@ if ($action === 'delete')
 {
     $originals_dir = $collection['storage_path'] . '/originals';
     $thumbs_dir    = $collection['storage_path'] . '/thumbs';
+    $medium_dir    = $collection['storage_path'] . '/medium';
 
     $deleted_count = 0;
 
@@ -62,10 +99,9 @@ if ($action === 'delete')
     {
         $original_path = $originals_dir . '/' . $filename;
         $thumb_path    = $thumbs_dir . '/' . $filename;
+        $medium_path   = $medium_dir . '/' . $filename;
 
-        $original_existed = is_file($original_path);
-
-        if ($original_existed)
+        if (is_file($original_path))
         {
             unlink($original_path);
         }
@@ -75,18 +111,24 @@ if ($action === 'delete')
             unlink($thumb_path);
         }
 
-        if ($original_existed)
+        if (is_file($medium_path))
         {
-            $deleted_count++;
+            unlink($medium_path);
         }
+
+        $deleted_count++;
     }
+
+    $id_placeholders = implode(',', array_fill(0, count($image_ids), '?'));
+    $delete = $pdo->prepare("DELETE FROM tb_images WHERE image_id IN ($id_placeholders)");
+    $delete->execute($image_ids);
 
     header('Location: upload.php?collection_id=' . $collection_id . '&deleted=' . $deleted_count);
     exit;
 }
 
 // ---------------------------------------------------------------
-// DOWNLOAD (full / medium / small — all as zip files, 70 images per zip)
+// DOWNLOAD (full / medium / small — zip files, 70 images per zip)
 // ---------------------------------------------------------------
 if (in_array($action, ['download_full', 'download_medium', 'download_small'], true))
 {
@@ -142,7 +184,7 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
             }
         }
 
-        $zip->close(); // ZipArchive reads file contents here, so temp files must still exist up to this point
+        $zip->close();
 
         foreach ($temp_files_to_clean as $tmp_file)
         {
@@ -157,8 +199,5 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
     exit;
 }
 
-// ---------------------------------------------------------------
-// Fallback — unrecognized action
-// ---------------------------------------------------------------
 header('Location: upload.php?collection_id=' . $collection_id . '&error=unknown_action');
 exit;

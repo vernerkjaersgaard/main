@@ -5,7 +5,6 @@ require_once __DIR__ . '/db.php';
 
 $collection_id = (int)($_POST['collection_id'] ?? 0);
 
-// Verify this collection exists AND belongs (via its project) to the logged-in user
 $stmt = $pdo->prepare("
     SELECT c.storage_path, c.project_id
     FROM tb_collections c
@@ -23,7 +22,6 @@ if (!$collection)
 
 $project_id = $collection['project_id'];
 
-// Recursively delete the entire storage folder (originals/, thumbs/, and the folder itself)
 function delete_directory_recursive($dir)
 {
     if (!is_dir($dir))
@@ -57,7 +55,9 @@ function delete_directory_recursive($dir)
 
 delete_directory_recursive($collection['storage_path']);
 
-// Now remove the database row
+// tb_images has ON DELETE CASCADE on its collection_id foreign key, so
+// deleting the collection row below automatically removes every associated
+// tb_images row too — no manual cleanup query needed here.
 $delete = $pdo->prepare("DELETE FROM tb_collections WHERE collection_id = ?");
 $delete->execute([$collection_id]);
 

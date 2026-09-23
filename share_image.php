@@ -1,6 +1,10 @@
 <?php
 // share_image.php
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/vendor/autoload.php';
+
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
 
 $token = $_GET['token'] ?? '';
 $collection_id = (int)($_GET['collection_id'] ?? 0);
@@ -13,9 +17,6 @@ if (!preg_match('/^[a-f0-9]{64}$/', $token))
     exit('Not found.');
 }
 
-// Confirm the token is valid, not revoked/expired, AND that the requested
-// collection actually belongs to THIS token's project — otherwise someone
-// could reuse a valid token to fetch images from an unrelated project.
 $stmt = $pdo->prepare("
     SELECT sl.ttl_days, sl.created_at, c.storage_path
     FROM tb_share_links sl
@@ -42,8 +43,63 @@ if ($safe_filename === '' || $safe_filename !== $file)
     exit('Invalid filename.');
 }
 
-$subfolder = ($size === 'full') ? 'originals' : 'thumbs';
-$path = $result['storage_path'] . '/' . $subfolder . '/' . $safe_filename;
+$stmt = $pdo->prepare("
+    SELECT image_id FROM tb_images
+    WHERE collection_id = ? AND stored_filename = ? AND status = 'complete'
+");
+$stmt->execute([$collection_id, $safe_filename]);
+
+if (!$stmt->fetch())
+{
+    http_response_code(404);
+    exit('Image not found.');
+}
+
+// Same on-the-fly generate-and-cache logic as image.php — a customer
+// viewing a shared gallery benefits from the same faster medium-size
+// loading, and reuses the SAME cached file on disk if the logged-in
+// owner has already viewed this image (both routes write to the same
+// storage_path/medium/ folder).
+if ($size === 'medium')
+{
+    $medium_dir = $result['storage_path'] . '/medium';
+    $medium_path = $medium_dir . '/' . $safe_filename;
+
+    if (!is_file($medium_path))
+    {
+        $original_path = $result['storage_path'] . '/originals/' . $safe_filename;
+
+        if (!is_file($original_path))
+        {
+            http_response_code(404);
+            exit('Image not found.');
+        }
+
+        if (!is_dir($medium_dir))
+        {
+            mkdir($medium_dir, 0775, true);
+        }
+
+        try
+        {
+            $manager = new ImageManager(new Driver());
+            $resized = $manager->read($original_path);
+            $resized->scaleDown(width: 1600);
+            $resized->save($medium_path);
+        }
+        catch (\Throwable $e)
+        {
+            $path = $original_path;
+        }
+    }
+
+    $path = $path ?? $medium_path;
+}
+else
+{
+    $subfolder = ($size === 'full') ? 'originals' : 'thumbs';
+    $path = $result['storage_path'] . '/' . $subfolder . '/' . $safe_filename;
+}
 
 if (!is_file($path))
 {

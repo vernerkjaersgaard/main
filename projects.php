@@ -8,7 +8,7 @@ $stmt->execute([$_SESSION['user_id']]);
 $projects = $stmt->fetchAll();
 ?>
 
-<h1>My Projects</h1>
+<h1>Projects</h1>
 <?php if (isset($_GET['project_deleted'])): ?>
     <p style="color:green;">Project deleted.</p>
 <?php endif; ?>

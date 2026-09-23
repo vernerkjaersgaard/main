@@ -1,12 +1,18 @@
 /* style.css */
+
+
+
 [data-theme="light"],
 :root:not([data-theme="dark"])
 {
-    --pico-primary: #013950;              /* Prussian Blue */
-    --pico-primary-hover: #F5906F;        /* Pale Teal */
-    --pico-primary-background: #7AC9D0;   /* Prussian Blue */
-    --pico-primary-underline: #7AC9D0;    /* Pale Teal */
+--pico-primary: #013950;              /* Prussian Blue */
+--pico-primary-hover: #F5906F;        /* Cantaloupe Orange */
+--pico-primary-background: #7AC9D0;   /* Pale Teal */
+--pico-primary-underline: #7AC9D0;    /* Pale Teal */
+--pico-background-color: #dedeec;
 }
+
+
 
 .thumbnail
 {
@@ -26,7 +32,64 @@
     max-width: 100%;
     max-height: 80vh;
     border-radius: 8px;
-    border: 2px solid var(--pico-primary);
+    border: 1px solid var(--pico-primary);
     display: block;
     margin: 0 auto;
 }
+
+:root
+{
+    --tag-red: #D64545;
+    --tag-green: #3A9D5D;
+    --tag-blue: #3B6EA5;
+    --tag-yellow: #E0A800;
+    --tag-purple: #8A4FBE;
+}
+
+
+.tag-summary
+{
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.tag-summary-item
+{
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.tag-swatch
+{
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.tag-swatch.tag-red    { background: var(--tag-red); }
+.tag-swatch.tag-green  { background: var(--tag-green); }
+.tag-swatch.tag-blue   { background: var(--tag-blue); }
+.tag-swatch.tag-yellow { background: var(--tag-yellow); }
+.tag-swatch.tag-purple { background: var(--tag-purple); }
+.tag-swatch.tag-none   { background: #ccc; }
+
+/* make things smaller */
+:root
+{
+    --pico-font-size: 87.5%;
+    --pico-spacing: 0.60rem;
+}
+
+
+.thumb-checkbox { border-color: var(--pico-primary) !important; }
+
+.thumb-checkbox.tag-red    { background-color: var(--tag-red) !important; }
+.thumb-checkbox.tag-green  { background-color: var(--tag-green) !important; }
+.thumb-checkbox.tag-blue   { background-color: var(--tag-blue) !important; }
+.thumb-checkbox.tag-yellow { background-color: var(--tag-yellow) !important; }
+.thumb-checkbox.tag-purple { background-color: var(--tag-purple) !important; }

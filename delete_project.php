@@ -5,7 +5,6 @@ require_once __DIR__ . '/db.php';
 
 $project_id = (int)($_POST['project_id'] ?? 0);
 
-// Verify this project exists AND belongs to the logged-in user
 $stmt = $pdo->prepare("SELECT project_id FROM tb_projects WHERE project_id = ? AND user_id = ?");
 $stmt->execute([$project_id, $_SESSION['user_id']]);
 $project = $stmt->fetch();
@@ -47,7 +46,6 @@ function delete_directory_recursive($dir)
     rmdir($dir);
 }
 
-// Delete every collection's files, then its DB row, before touching the project itself
 $stmt = $pdo->prepare("SELECT collection_id, storage_path FROM tb_collections WHERE project_id = ?");
 $stmt->execute([$project_id]);
 $collections = $stmt->fetchAll();
@@ -56,6 +54,9 @@ foreach ($collections as $collection)
 {
     delete_directory_recursive($collection['storage_path']);
 
+    // tb_images has ON DELETE CASCADE on its collection_id foreign key, so
+    // this DELETE automatically removes every tb_images row belonging to
+    // this collection too — no separate cleanup query needed per collection.
     $delete_collection = $pdo->prepare("DELETE FROM tb_collections WHERE collection_id = ?");
     $delete_collection->execute([$collection['collection_id']]);
 }
@@ -70,6 +71,7 @@ if (is_dir($project_storage_dir))
 
 // tb_share_links has ON DELETE CASCADE, so those rows clean up automatically
 // once the project row itself is deleted below — no manual step needed here.
+
 $delete_project = $pdo->prepare("DELETE FROM tb_projects WHERE project_id = ?");
 $delete_project->execute([$project_id]);
 

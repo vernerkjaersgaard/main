@@ -6,7 +6,6 @@ require_once __DIR__ . '/db.php';
 $collection_id = (int)($_GET['collection_id'] ?? 0);
 $current_file = $_GET['file'] ?? '';
 
-// Verify this collection exists AND belongs (via its project) to the logged-in user
 $stmt = $pdo->prepare("
     SELECT c.storage_path, c.collection_name
     FROM tb_collections c
@@ -30,20 +29,14 @@ if ($safe_current === '' || $safe_current !== $current_file)
     exit('Invalid filename.');
 }
 
-// Build the same sorted image list as upload.php, to determine order
-$allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-$originals_dir = $collection['storage_path'] . '/originals';
-$images = [];
-
-foreach (scandir($originals_dir) as $entry)
-{
-    $ext = strtolower(pathinfo($entry, PATHINFO_EXTENSION));
-    if (in_array($ext, $allowed_extensions, true))
-    {
-        $images[] = $entry;
-    }
-}
-sort($images);
+$stmt = $pdo->prepare("
+    SELECT stored_filename
+    FROM tb_images
+    WHERE collection_id = ? AND status = 'complete'
+    ORDER BY original_filename
+");
+$stmt->execute([$collection_id]);
+$images = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
 $current_index = array_search($safe_current, $images, true);
 
@@ -64,9 +57,14 @@ require_once __DIR__ . '/header.php';
 <p>Image <?= $current_index + 1 ?> of <?= count($images) ?></p>
 
 <div style="text-align:center;">
-    <img src="image.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($safe_current) ?>&size=full"
+    <img src="image.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($safe_current) ?>&size=medium"
          alt="<?= htmlspecialchars($safe_current) ?>"
          class="full-image">
+    <p>
+        <a href="image.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($safe_current) ?>&size=full" target="_blank">
+            View full resolution
+        </a>
+    </p>
 </div>
 
 <p style="text-align:center;">

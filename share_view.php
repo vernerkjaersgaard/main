@@ -13,7 +13,7 @@ if (!preg_match('/^[a-f0-9]{64}$/', $token))
 }
 
 $stmt = $pdo->prepare("
-    SELECT sl.ttl_days, sl.created_at, c.storage_path, c.collection_name, sl.project_id
+    SELECT sl.ttl_days, sl.created_at, c.collection_name, sl.project_id
     FROM tb_share_links sl
     JOIN tb_collections c ON c.project_id = sl.project_id
     WHERE sl.token = ? AND sl.revoked_at IS NULL AND c.collection_id = ?
@@ -38,19 +38,14 @@ if ($safe_current === '' || $safe_current !== $current_file)
     exit('Invalid filename.');
 }
 
-$allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-$originals_dir = $result['storage_path'] . '/originals';
-$images = [];
-
-foreach (scandir($originals_dir) as $entry)
-{
-    $ext = strtolower(pathinfo($entry, PATHINFO_EXTENSION));
-    if (in_array($ext, $allowed_extensions, true))
-    {
-        $images[] = $entry;
-    }
-}
-sort($images);
+$stmt = $pdo->prepare("
+    SELECT stored_filename
+    FROM tb_images
+    WHERE collection_id = ? AND status = 'complete'
+    ORDER BY original_filename
+");
+$stmt->execute([$collection_id]);
+$images = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
 $current_index = array_search($safe_current, $images, true);
 
@@ -71,6 +66,7 @@ $next_file = ($current_index < count($images) - 1) ? $images[$current_index + 1]
     <meta name="robots" content="noindex, nofollow">
     <title><?= htmlspecialchars($result['collection_name']) ?></title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <main class="container">
@@ -80,9 +76,14 @@ $next_file = ($current_index < count($images) - 1) ? $images[$current_index + 1]
 <p>Image <?= $current_index + 1 ?> of <?= count($images) ?></p>
 
 <div style="text-align:center;">
-    <img src="share_image.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection_id ?>&file=<?= urlencode($safe_current) ?>&size=full"
+    <img src="share_image.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection_id ?>&file=<?= urlencode($safe_current) ?>&size=medium"
          alt="<?= htmlspecialchars($safe_current) ?>"
          class="full-image">
+    <p>
+        <a href="share_image.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection_id ?>&file=<?= urlencode($safe_current) ?>&size=full" target="_blank">
+            View full resolution
+        </a>
+    </p>
 </div>
 
 <p style="text-align:center;">
