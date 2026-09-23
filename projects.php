@@ -48,5 +48,6 @@ $projects = $stmt->fetchAll();
 </table>
 
 <?php endif; ?>
-
+<hr>
+<p><small><a href="delete_account.php">Delete my account</a></small></p>
 <?php require_once __DIR__ . '/footer.php'; ?>
