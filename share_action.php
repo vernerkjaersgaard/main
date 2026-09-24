@@ -1,6 +1,7 @@
 <?php
 // share_action.php
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/log.php';
 
 $token = $_POST['token'] ?? '';
 $collection_id = (int)($_POST['collection_id'] ?? 0);
@@ -14,7 +15,7 @@ if (!preg_match('/^[a-f0-9]{64}$/', $token))
 }
 
 $stmt = $pdo->prepare("
-    SELECT sl.ttl_days, sl.created_at, c.storage_path
+    SELECT sl.ttl_days, sl.created_at, sl.project_id, c.storage_path
     FROM tb_share_links sl
     JOIN tb_collections c ON c.project_id = sl.project_id
     WHERE sl.token = ? AND sl.revoked_at IS NULL AND c.collection_id = ?
@@ -88,6 +89,10 @@ if ($action === 'tag')
     $id_placeholders = implode(',', array_fill(0, count($image_ids), '?'));
     $update = $pdo->prepare("UPDATE tb_images SET tag_color = ? WHERE image_id IN ($id_placeholders)");
     $update->execute(array_merge([$tag_color], $image_ids));
+
+    // user_id is null throughout this file — the customer has no session,
+    // the share token itself is the identifying context instead.
+    log_action($pdo, null, 'share_tag', $result['project_id'], $collection_id, count($image_ids) . ' image(s) tagged ' . $tag_color);
 
     header('Location: share.php?token=' . urlencode($token) . '&tagged=' . count($image_ids));
     exit;
@@ -165,6 +170,9 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
     }
 
     $token_list = implode(',', $tokens);
+
+    log_action($pdo, null, 'share_' . $action, $result['project_id'], $collection_id, count($safe_files) . ' image(s)');
+
     header('Location: share_download_results.php?token=' . urlencode($token) . '&collection_id=' . $collection_id . '&batch=' . $batch_id . '&tokens=' . urlencode($token_list));
     exit;
 }

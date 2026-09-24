@@ -2,13 +2,14 @@
 // gallery_action.php
 require_once __DIR__ . '/auth_check.php';
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/log.php';
 
 $collection_id = (int)($_POST['collection_id'] ?? 0);
 $action = $_POST['gallery_action'] ?? '';
 $ticked = $_POST['ticked'] ?? [];
 
 $stmt = $pdo->prepare("
-    SELECT c.storage_path
+    SELECT c.storage_path, p.project_id
     FROM tb_collections c
     JOIN tb_projects p ON p.project_id = c.project_id
     WHERE c.collection_id = ? AND p.user_id = ?
@@ -80,6 +81,8 @@ if ($action === 'tag')
     $update = $pdo->prepare("UPDATE tb_images SET tag_color = ? WHERE image_id IN ($id_placeholders)");
     $update->execute(array_merge([$tag_color], $image_ids));
 
+    log_action($pdo, $_SESSION['user_id'], 'tag', $collection['project_id'], $collection_id, count($image_ids) . ' image(s) tagged ' . $tag_color);
+
     header('Location: upload.php?collection_id=' . $collection_id . '&tagged=' . count($image_ids));
     exit;
 }
@@ -122,6 +125,8 @@ if ($action === 'delete')
     $id_placeholders = implode(',', array_fill(0, count($image_ids), '?'));
     $delete = $pdo->prepare("DELETE FROM tb_images WHERE image_id IN ($id_placeholders)");
     $delete->execute($image_ids);
+
+    log_action($pdo, $_SESSION['user_id'], 'delete_images', $collection['project_id'], $collection_id, $deleted_count . ' image(s) deleted');
 
     header('Location: upload.php?collection_id=' . $collection_id . '&deleted=' . $deleted_count);
     exit;
@@ -195,6 +200,9 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
     }
 
     $token_list = implode(',', $tokens);
+
+    log_action($pdo, $_SESSION['user_id'], $action, $collection['project_id'], $collection_id, count($safe_files) . ' image(s)');
+
     header('Location: download_results.php?collection_id=' . $collection_id . '&tokens=' . urlencode($token_list));
     exit;
 }

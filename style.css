@@ -122,3 +122,21 @@
 {
     color: #FFFFFF;
 }
+
+.site-header
+{
+    background-color: var(--pico-primary);
+    padding: 1rem 1.5rem;
+}
+
+.site-header a,
+.site-header strong,
+.site-header li
+{
+    color: var(--pico-primary-inverse, #FFFFFF);
+}
+
+.site-header a:hover
+{
+    color: var(--tag-blue);
+}

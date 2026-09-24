@@ -2,6 +2,7 @@
 // share_manage.php
 require_once __DIR__ . '/auth_check.php';
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/log.php';
 
 $project_id = (int)($_GET['project_id'] ?? 0);
 
@@ -30,6 +31,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
         $insert = $pdo->prepare("INSERT INTO tb_share_links (project_id, token, ttl_days) VALUES (?, ?, ?)");
         $insert->execute([$project_id, $token, $ttl_days]);
+
+        log_action($pdo, $_SESSION['user_id'], 'share_link_created', $project_id, null, $ttl_days !== null ? 'expires in ' . $ttl_days . ' days' : 'no expiry');
     }
     elseif ($post_action === 'revoke')
     {
@@ -37,6 +40,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
         $revoke = $pdo->prepare("UPDATE tb_share_links SET revoked_at = NOW() WHERE share_id = ? AND project_id = ?");
         $revoke->execute([$share_id, $project_id]);
+
+        log_action($pdo, $_SESSION['user_id'], 'share_link_revoked', $project_id, null, 'share_id: ' . $share_id);
     }
 
     header('Location: share_manage.php?project_id=' . $project_id);

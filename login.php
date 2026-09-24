@@ -2,6 +2,7 @@
 // login.php
 session_start();
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/log.php';
 
 $error = '';
 
@@ -14,17 +15,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     $stmt->execute([$email]);
     $user = $stmt->fetch();
 
-    if ($user && password_verify($password, $user['password_hash']))
+if ($user && password_verify($password, $user['password_hash']))
     {
         $_SESSION['user_id'] = $user['user_id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['is_admin'] = $user['is_admin'];
 
+        log_action($pdo, $user['user_id'], 'login');
+
         header('Location: index.php');
-        exit;
+exit;
     }
-    else
+else
     {
+        log_action($pdo, null, 'login_failed', null, null, 'email: ' . $email);
+
         $error = 'Invalid email or password.';
     }
 }
@@ -35,17 +40,17 @@ require_once __DIR__ . '/header.php';
 <h1>Log In</h1>
 
 <?php if (!empty($_GET['registered'])): ?>
-    <p style="color:green;">Account created — please log in.</p>
+<p style="color:green;">Account created — please log in.</p>
 <?php endif; ?>
 <?php if ($error): ?>
-    <p style="color:red;"><?= htmlspecialchars($error) ?></p>
+<p style="color:red;"><?= htmlspecialchars($error) ?></p>
 <?php endif; ?>
 
 <form method="post">
-    <label>Email: <input type="email" name="email" required></label><br>
-    <label>Password: <input type="password" name="password" required></label><br>
-    <p><a href="forgot_password.php">Forgot your password?</a></p>
-    <button type="submit">Log In</button>
+<label>Email: <input type="email" name="email" required></label><br>
+<label>Password: <input type="password" name="password" required></label><br>
+<p><a href="forgot_password.php">Forgot your password?</a></p>
+<button type="submit">Log In</button>
 </form>
 
 <p>Don't have an account? <a href="register.php">Register</a></p>

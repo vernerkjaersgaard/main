@@ -2,6 +2,7 @@
 // delete_account.php
 require_once __DIR__ . '/auth_check.php';
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/log.php';
 
 $error = '';
 
@@ -13,40 +14,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     $stmt->execute([$_SESSION['user_id']]);
     $current_user = $stmt->fetch();
 
-    if (!$current_user || !password_verify($password, $current_user['password_hash']))
+if (!$current_user || !password_verify($password, $current_user['password_hash']))
     {
         $error = 'Incorrect password.';
     }
-    elseif ($current_user['is_admin'])
+elseif ($current_user['is_admin'])
     {
-        // Refuse to let the sole admin delete themselves — that would
-        // leave admin_check.php locking everyone out of every admin page
-        // permanently, recoverable only via direct SQL. Mirrors the same
-        // self-lockout protection already built into admin_users.php.
+// Refuse to let the sole admin delete themselves — that would
+// leave admin_check.php locking everyone out of every admin page
+// permanently, recoverable only via direct SQL. Mirrors the same
+// self-lockout protection already built into admin_users.php.
         $other_admins = $pdo->prepare("SELECT COUNT(*) FROM tb_users WHERE is_admin = 1 AND user_id != ?");
         $other_admins->execute([$_SESSION['user_id']]);
 
-        if ($other_admins->fetchColumn() == 0)
+if ($other_admins->fetchColumn() == 0)
         {
             $error = "You're the only admin on this system. Promote another user to admin first, or contact the site administrator, before deleting this account.";
         }
     }
 
-    if ($error === '')
+if ($error === '')
     {
-        require_once __DIR__ . '/account_deletion.php';
+        // Logged BEFORE deletion, and BEFORE session_destroy() — this is
+        // the last possible moment $_SESSION['user_id']/'username' are
+        // still valid. Once delete_user_account() runs, the user row (and
+        // every project/collection name that could describe what was
+        // lost) is gone for good.
+        log_action($pdo, $_SESSION['user_id'], 'delete_account', null, null, $_SESSION['username'] . ' (self-deleted)');
+
+require_once __DIR__ . '/account_deletion.php';
         delete_user_account($pdo, $_SESSION['user_id']);
 
         session_destroy();
 
-        require_once __DIR__ . '/header.php';
-        ?>
-        <h1>Account Deleted</h1>
-        <p>Your account and all associated projects, collections, and images have been permanently deleted.</p>
-        <p><a href="index.php">Return to the homepage</a></p>
-        <?php
-        require_once __DIR__ . '/footer.php';
-        exit;
+require_once __DIR__ . '/header.php';
+?>
+<h1>Account Deleted</h1>
+<p>Your account and all associated projects, collections, and images have been permanently deleted.</p>
+<p><a href="index.php">Return to the homepage</a></p>
+<?php
+require_once __DIR__ . '/footer.php';
+exit;
     }
 }
 
@@ -74,14 +82,14 @@ require_once __DIR__ . '/header.php';
 <p style="color:red;"><strong>Warning:</strong> this permanently deletes your account, all <?= (int)$project_count ?> project(s), and all <?= (int)$image_count ?> image(s) they contain — including any active share links. This action cannot be undone.</p>
 
 <?php if ($error): ?>
-    <p style="color:red;"><?= htmlspecialchars($error) ?></p>
+<p style="color:red;"><?= htmlspecialchars($error) ?></p>
 <?php endif; ?>
 
 <form method="post">
-    <label>Enter your password to confirm:
-        <input type="password" name="password" required>
-    </label>
-    <button type="submit" class="secondary">Permanently Delete My Account</button>
+<label>Enter your password to confirm:
+<input type="password" name="password" required>
+</label>
+<button type="submit" class="secondary">Permanently Delete My Account</button>
 </form>
 
 <p><a href="projects.php">&larr; Cancel and go back</a></p>

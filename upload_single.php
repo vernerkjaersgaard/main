@@ -2,6 +2,7 @@
 // upload_single.php
 require_once __DIR__ . '/auth_check.php';
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/log.php';
 require_once __DIR__ . '/vendor/autoload.php';
 
 use Intervention\Image\ImageManager;
@@ -12,7 +13,7 @@ header('Content-Type: application/json');
 $collection_id = (int)($_POST['collection_id'] ?? 0);
 
 $stmt = $pdo->prepare("
-    SELECT c.storage_path
+    SELECT c.storage_path, p.project_id
     FROM tb_collections c
     JOIN tb_projects p ON p.project_id = c.project_id
     WHERE c.collection_id = ? AND p.user_id = ?
@@ -156,6 +157,8 @@ try
 
     $update = $pdo->prepare("UPDATE tb_images SET status = 'complete' WHERE image_id = ?");
     $update->execute([$image_id]);
+
+    log_action($pdo, $_SESSION['user_id'], 'upload', $collection['project_id'], $collection_id, $original_name);
 
     echo json_encode(['ok' => true, 'original_filename' => $original_name, 'stored_filename' => $stored_filename]);
     exit;

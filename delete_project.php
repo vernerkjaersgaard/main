@@ -2,42 +2,49 @@
 // delete_project.php
 require_once __DIR__ . '/auth_check.php';
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/log.php';
 
 $project_id = (int)($_POST['project_id'] ?? 0);
 
-$stmt = $pdo->prepare("SELECT project_id FROM tb_projects WHERE project_id = ? AND user_id = ?");
+$stmt = $pdo->prepare("SELECT project_id, project_name FROM tb_projects WHERE project_id = ? AND user_id = ?");
 $stmt->execute([$project_id, $_SESSION['user_id']]);
 $project = $stmt->fetch();
 
 if (!$project)
 {
-    http_response_code(404);
-    exit('Project not found.');
+http_response_code(404);
+exit('Project not found.');
 }
+
+// Logged BEFORE any deletion happens, deliberately — the project's own
+// name still exists to reference right now; once the DELETE below runs,
+// it's gone for good, and a log entry written afterward could only ever
+// say "some project was deleted", not which one.
+log_action($pdo, $_SESSION['user_id'], 'delete_project', $project_id, null, $project['project_name']);
 
 function delete_directory_recursive($dir)
 {
-    if (!is_dir($dir))
+if (!is_dir($dir))
     {
-        return;
+return;
     }
 
     $items = scandir($dir);
 
-    foreach ($items as $item)
+foreach ($items as $item)
     {
-        if ($item === '.' || $item === '..')
+if ($item === '.' || $item === '..')
         {
-            continue;
+continue;
         }
 
         $path = $dir . '/' . $item;
 
-        if (is_dir($path))
+if (is_dir($path))
         {
             delete_directory_recursive($path);
         }
-        else
+else
         {
             unlink($path);
         }
@@ -54,9 +61,9 @@ foreach ($collections as $collection)
 {
     delete_directory_recursive($collection['storage_path']);
 
-    // tb_images has ON DELETE CASCADE on its collection_id foreign key, so
-    // this DELETE automatically removes every tb_images row belonging to
-    // this collection too — no separate cleanup query needed per collection.
+// tb_images has ON DELETE CASCADE on its collection_id foreign key, so
+// this DELETE automatically removes every tb_images row belonging to
+// this collection too — no separate cleanup query needed per collection.
     $delete_collection = $pdo->prepare("DELETE FROM tb_collections WHERE collection_id = ?");
     $delete_collection->execute([$collection['collection_id']]);
 }

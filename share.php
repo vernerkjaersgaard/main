@@ -1,6 +1,7 @@
 <?php
 // share.php
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/log.php';
 
 $token = $_GET['token'] ?? '';
 
@@ -30,6 +31,8 @@ if (!$share || $is_expired)
 
 $update = $pdo->prepare("UPDATE tb_share_links SET view_count = view_count + 1, last_accessed = NOW() WHERE share_id = ?");
 $update->execute([$share['share_id']]);
+
+log_action($pdo, null, 'share_view', $share['project_id'], null, null);
 
 $stmt = $pdo->prepare("SELECT collection_id, collection_name FROM tb_collections WHERE project_id = ? ORDER BY date_of_creation");
 $stmt->execute([$share['project_id']]);

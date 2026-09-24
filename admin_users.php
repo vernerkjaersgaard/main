@@ -1,6 +1,7 @@
 <?php
 // admin_users.php
 require_once __DIR__ . '/admin_check.php';
+require_once __DIR__ . '/log.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST')
 {
@@ -20,11 +21,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     {
         $update = $pdo->prepare("UPDATE tb_users SET is_admin = 1 WHERE user_id = ?");
         $update->execute([$target_user_id]);
+
+        log_action($pdo, $_SESSION['user_id'], 'admin_granted', null, null, 'target user_id: ' . $target_user_id);
     }
     elseif ($post_action === 'revoke')
     {
         $update = $pdo->prepare("UPDATE tb_users SET is_admin = 0 WHERE user_id = ?");
         $update->execute([$target_user_id]);
+
+        log_action($pdo, $_SESSION['user_id'], 'admin_revoked', null, null, 'target user_id: ' . $target_user_id);
     }
     elseif ($post_action === 'set_cap')
     {
@@ -33,6 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
         $update = $pdo->prepare("UPDATE tb_users SET storage_cap_mb = ? WHERE user_id = ?");
         $update->execute([$cap_value, $target_user_id]);
+
+        log_action($pdo, $_SESSION['user_id'], 'storage_cap_set', null, null, 'target user_id: ' . $target_user_id . ', cap: ' . ($cap_value ?? 'unlimited') . ' MB');
     }
     elseif ($post_action === 'delete_user')
     {
@@ -65,6 +72,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
                 exit;
             }
         }
+
+        // Logged BEFORE deletion, same reasoning as delete_account.php —
+        // $target['username'] is only available right now, before
+        // delete_user_account() removes the row it came from.
+        log_action($pdo, $_SESSION['user_id'], 'admin_deleted_user', null, null, $target['username'] . ' (deleted by admin)');
 
         require_once __DIR__ . '/account_deletion.php';
         delete_user_account($pdo, $target_user_id);
