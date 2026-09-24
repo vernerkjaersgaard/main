@@ -26,10 +26,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         $update = $pdo->prepare("UPDATE tb_users SET is_admin = 0 WHERE user_id = ?");
         $update->execute([$target_user_id]);
     }
+    elseif ($post_action === 'set_cap')
+    {
+        $cap_input = trim($_POST['storage_cap_mb'] ?? '');
+        $cap_value = ($cap_input === '') ? null : (int)$cap_input;
+
+        $update = $pdo->prepare("UPDATE tb_users SET storage_cap_mb = ? WHERE user_id = ?");
+        $update->execute([$cap_value, $target_user_id]);
+    }
 
     header('Location: admin_users.php?updated=1');
     exit;
 }
+
 
 $users = $pdo->query("
     SELECT
@@ -37,6 +46,7 @@ $users = $pdo->query("
         u.username,
         u.email,
         u.is_admin,
+        u.storage_cap_mb,
         u.date_of_creation,
         COUNT(DISTINCT p.project_id) AS project_count,
         COUNT(DISTINCT c.collection_id) AS collection_count,
@@ -88,6 +98,7 @@ require_once __DIR__ . '/header.php';
             <th>Images</th>
             <th>Storage</th>
             <th>Admin</th>
+            <th>Storage Cap (MB)</th>
             <th></th>
         </tr>
     </thead>
@@ -115,6 +126,14 @@ require_once __DIR__ . '/header.php';
                     <?php else: ?>
                         <em>(you)</em>
                     <?php endif; ?>
+                </td>
+                <td>
+                    <form method="post" style="display:flex; gap:0.3rem;">
+                        <input type="hidden" name="user_id" value="<?= (int)$user['user_id'] ?>">
+                        <input type="hidden" name="toggle_action" value="set_cap">
+                        <input type="number" name="storage_cap_mb" value="<?= htmlspecialchars($user['storage_cap_mb'] ?? '') ?>" placeholder="Unlimited" min="0" style="width:100px;">
+                        <button type="submit">Set</button>
+                    </form>
                 </td>
             </tr>
         <?php endforeach; ?>

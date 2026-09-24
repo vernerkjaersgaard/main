@@ -17,6 +17,7 @@ $stmt = $pdo->prepare("
     JOIN tb_projects p ON p.project_id = c.project_id
     WHERE c.collection_id = ? AND p.user_id = ?
 ");
+
 $stmt->execute([$collection_id, $_SESSION['user_id']]);
 $collection = $stmt->fetch();
 
@@ -25,6 +26,41 @@ if (!$collection)
     http_response_code(404);
     echo json_encode(['ok' => false, 'message' => 'Collection not found.']);
     exit;
+}
+
+// Enforce per-user storage quota, if one is set (NULL = unlimited).
+// Measured via SUM(file_size) across all the user's complete uploads —
+// a fast, approximate figure (excludes generated thumbs/medium copies),
+// not the exact filesystem total admin_storage.php calculates.
+$stmt = $pdo->prepare("SELECT storage_cap_mb FROM tb_users WHERE user_id = ?");
+$stmt->execute([$_SESSION['user_id']]);
+$cap_mb = $stmt->fetchColumn();
+
+if ($cap_mb !== null)
+{
+    $stmt = $pdo->prepare("
+        SELECT COALESCE(SUM(i.file_size), 0)
+        FROM tb_images i
+        JOIN tb_collections c ON c.collection_id = i.collection_id
+        JOIN tb_projects p ON p.project_id = c.project_id
+        WHERE p.user_id = ? AND i.status = 'complete'
+    ");
+    $stmt->execute([$_SESSION['user_id']]);
+    $current_usage_bytes = $stmt->fetchColumn();
+
+    $cap_bytes = $cap_mb * 1024 * 1024;
+    $incoming_size = $_FILES['image']['size'] ?? 0;
+
+    if ($current_usage_bytes + $incoming_size > $cap_bytes)
+    {
+        http_response_code(413);
+        echo json_encode([
+            'ok' => false,
+            'original_filename' => $_FILES['image']['name'] ?? '',
+            'message' => 'Storage quota exceeded. You have used ' . round($current_usage_bytes / 1024 / 1024, 1) . ' MB of your ' . $cap_mb . ' MB limit.',
+        ]);
+        exit;
+    }
 }
 
 if (!isset($_FILES['image']))
