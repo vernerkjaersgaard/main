@@ -130,8 +130,16 @@ $collections = $stmt->fetchAll();
                         Select all
                     </label>
 
-                    <select name="tag_color" required>
-                        <option value="">Tag selected as&hellip;</option>
+                    <select name="gallery_action" class="action-select" required>
+                        <option value="">Choose an action&hellip;</option>
+                        <option value="tag">Set color tag&hellip;</option>
+                        <option value="download_full">Download full size images (zip)</option>
+                        <option value="download_medium">Download medium scaled images (zip)</option>
+                        <option value="download_small">Download small scaled images (zip)</option>
+                    </select>
+
+                    <select name="tag_color" class="tag-color-select" style="display:none;">
+                        <option value="">Color&hellip;</option>
                         <option value="red">🔴 Red</option>
                         <option value="green">🟢 Green</option>
                         <option value="blue">🔵 Blue</option>
@@ -140,7 +148,7 @@ $collections = $stmt->fetchAll();
                         <option value="none">⚪ Clear tag</option>
                     </select>
 
-                    <button type="submit">Apply</button>
+                <button type="submit">Apply</button>
                 </div>
 
                 <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:1rem; margin-bottom:2rem;">
@@ -178,14 +186,44 @@ document.querySelectorAll('.tag-form').forEach(function (form)
     form.addEventListener('submit', function (e)
     {
         const ticked = form.querySelectorAll('.thumb-checkbox:checked').length;
+        const action = form.querySelector('.action-select').value;
+        const colorSelect = form.querySelector('.tag-color-select');
 
         if (ticked === 0)
         {
             alert('Please tick at least one image first.');
             e.preventDefault();
+            return;
+        }
+
+        if (action === 'tag' && colorSelect.value === '')
+        {
+            alert('Please choose a color.');
+            e.preventDefault();
         }
     });
 });
+
+document.querySelectorAll('.action-select').forEach(function (actionSelect)
+{
+    actionSelect.addEventListener('change', function ()
+    {
+        const colorSelect = this.closest('.tag-form').querySelector('.tag-color-select');
+
+        if (this.value === 'tag')
+        {
+            colorSelect.style.display = 'inline-block';
+            colorSelect.required = true;
+        }
+        else
+        {
+            colorSelect.style.display = 'none';
+            colorSelect.required = false;
+            colorSelect.value = '';
+        }
+    });
+});
+
 </script>
 
 </main>

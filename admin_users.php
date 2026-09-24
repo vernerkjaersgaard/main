@@ -34,6 +34,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         $update = $pdo->prepare("UPDATE tb_users SET storage_cap_mb = ? WHERE user_id = ?");
         $update->execute([$cap_value, $target_user_id]);
     }
+    elseif ($post_action === 'delete_user')
+    {
+        $confirm_username = trim($_POST['confirm_username'] ?? '');
+
+        $stmt = $pdo->prepare("SELECT username, is_admin FROM tb_users WHERE user_id = ?");
+        $stmt->execute([$target_user_id]);
+        $target = $stmt->fetch();
+
+        if (!$target)
+        {
+            header('Location: admin_users.php?error=user_not_found');
+            exit;
+        }
+
+        if ($confirm_username !== $target['username'])
+        {
+            header('Location: admin_users.php?error=username_mismatch');
+            exit;
+        }
+
+        if ($target['is_admin'])
+        {
+            $other_admins = $pdo->prepare("SELECT COUNT(*) FROM tb_users WHERE is_admin = 1 AND user_id != ?");
+            $other_admins->execute([$target_user_id]);
+
+            if ($other_admins->fetchColumn() == 0)
+            {
+                header('Location: admin_users.php?error=sole_admin');
+                exit;
+            }
+        }
+
+        require_once __DIR__ . '/account_deletion.php';
+        delete_user_account($pdo, $target_user_id);
+
+        header('Location: admin_users.php?user_deleted=1');
+        exit;
+    }
 
     header('Location: admin_users.php?updated=1');
     exit;
@@ -83,8 +121,20 @@ require_once __DIR__ . '/header.php';
 <?php if (isset($_GET['updated'])): ?>
     <p style="color:green;">User updated.</p>
 <?php endif; ?>
+<?php if (isset($_GET['user_deleted'])): ?>
+    <p style="color:green;">User account deleted.</p>
+<?php endif; ?>
 <?php if (isset($_GET['error']) && $_GET['error'] === 'self_toggle'): ?>
     <p style="color:red;">You can't change your own admin status here.</p>
+<?php endif; ?>
+<?php if (isset($_GET['error']) && $_GET['error'] === 'username_mismatch'): ?>
+    <p style="color:red;">Username confirmation didn't match — deletion cancelled.</p>
+<?php endif; ?>
+<?php if (isset($_GET['error']) && $_GET['error'] === 'sole_admin'): ?>
+    <p style="color:red;">Can't delete the only admin account. Promote another user first.</p>
+<?php endif; ?>
+<?php if (isset($_GET['error']) && $_GET['error'] === 'user_not_found'): ?>
+    <p style="color:red;">User not found.</p>
 <?php endif; ?>
 
 <table>
@@ -135,9 +185,41 @@ require_once __DIR__ . '/header.php';
                         <button type="submit">Set</button>
                     </form>
                 </td>
+                <td>
+                    <?php if ((int)$user['user_id'] !== (int)$_SESSION['user_id']): ?>
+                        <form method="post" style="display:inline;"
+                            onsubmit="return confirmUserDeletion(this, '<?= htmlspecialchars($user['username'], ENT_QUOTES) ?>');">
+                            <input type="hidden" name="user_id" value="<?= (int)$user['user_id'] ?>">
+                            <input type="hidden" name="toggle_action" value="delete_user">
+                            <input type="hidden" name="confirm_username" class="confirm-username-field">
+                            <button type="submit" class="secondary">Delete Account</button>
+                        </form>
+                    <?php else: ?>
+                        <em>(you)</em>
+                    <?php endif; ?>
+                </td>
             </tr>
         <?php endforeach; ?>
     </tbody>
 </table>
+
+<script>
+    function confirmUserDeletion(form, username)
+    {
+        const typed = prompt(`This will PERMANENTLY delete "${username}", all their projects, collections, and images.\n\nType the username exactly to confirm:`);
+
+        if (typed !== username)
+        {
+            if (typed !== null)
+            {
+                alert('Username did not match. Deletion cancelled.');
+            }
+            return false;
+        }
+
+        form.querySelector('.confirm-username-field').value = typed;
+        return true;
+    }
+</script>
 
 <?php require_once __DIR__ . '/footer.php'; ?>
