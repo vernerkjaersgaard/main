@@ -79,7 +79,7 @@ $output_text = rtrim(implode("\n", $lines));
     <meta name="robots" content="noindex, nofollow">
     <title>Image List &mdash; <?= htmlspecialchars($result['collection_name']) ?></title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=<?= filemtime(__DIR__ . '/style.css') ?>">
 </head>
 <body>
 <main class="container">

@@ -66,7 +66,7 @@ $next_file = ($current_index < count($images) - 1) ? $images[$current_index + 1]
     <meta name="robots" content="noindex, nofollow">
     <title><?= htmlspecialchars($result['collection_name']) ?></title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=<?= filemtime(__DIR__ . '/style.css') ?>">
 </head>
 <body>
 <main class="container">
@@ -75,10 +75,10 @@ $next_file = ($current_index < count($images) - 1) ? $images[$current_index + 1]
 
 <p>Image <?= $current_index + 1 ?> of <?= count($images) ?></p>
 
-<div style="text-align:center;">
+<div class="share-viewer-bg">
     <img src="share_image.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection_id ?>&file=<?= urlencode($safe_current) ?>&size=medium"
          alt="<?= htmlspecialchars($safe_current) ?>"
-         class="full-image">
+         class="share-full-image">
     <p>
         <a href="share_image.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection_id ?>&file=<?= urlencode($safe_current) ?>&size=full" target="_blank">
             View full resolution

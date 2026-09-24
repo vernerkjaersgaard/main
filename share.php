@@ -43,12 +43,23 @@ $collections = $stmt->fetchAll();
     <meta name="robots" content="noindex, nofollow">
     <title><?= htmlspecialchars($share['project_name']) ?> &mdash; Gallery</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=<?= filemtime(__DIR__ . '/style.css') ?>">
 </head>
 <body>
 <main class="container">
 
 <h1><?= htmlspecialchars($share['project_name']) ?></h1>
+
+<?php if (count($collections) > 1): ?>
+    <nav aria-label="Collections">
+        <ul>
+            <?php foreach ($collections as $collection): ?>
+                <li><a href="#collection-<?= $collection['collection_id'] ?>"><?= htmlspecialchars($collection['collection_name']) ?></a></li>
+            <?php endforeach; ?>
+        </ul>
+    </nav>
+    <hr>
+<?php endif; ?>
 
 <?php if (isset($_GET['tagged'])): ?>
     <p style="color:green;"><?= (int)$_GET['tagged'] ?> image(s) tagged.</p>
@@ -73,7 +84,7 @@ $collections = $stmt->fetchAll();
 <?php else: ?>
 
     <?php foreach ($collections as $collection): ?>
-        <h2><?= htmlspecialchars($collection['collection_name']) ?></h2>
+        <h2 id="collection-<?= $collection['collection_id'] ?>"><?= htmlspecialchars($collection['collection_name']) ?></h2>
 
         <?php
         $stmt = $pdo->prepare("

@@ -93,3 +93,32 @@
 .thumb-checkbox.tag-blue   { background-color: var(--tag-blue) !important; }
 .thumb-checkbox.tag-yellow { background-color: var(--tag-yellow) !important; }
 .thumb-checkbox.tag-purple { background-color: var(--tag-purple) !important; }
+
+.share-viewer-bg
+{
+    background-color: #1a1a1a;
+    background-color: #555555;
+    padding: 2rem;
+    border-radius: 8px;
+    text-align: center;
+}
+
+.share-full-image
+{
+    max-width: 100%;
+    max-height: 80vh;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    display: block;
+    margin: 0 auto;
+}
+
+.share-viewer-bg a
+{
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.share-viewer-bg a:hover
+{
+    color: #FFFFFF;
+}
