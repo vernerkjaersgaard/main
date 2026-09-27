@@ -91,7 +91,7 @@ $collections = $stmt->fetchAll();
 
         <?php
         $stmt = $pdo->prepare("
-            SELECT stored_filename, original_filename, tag_color
+            SELECT stored_filename, original_filename, tag_color, notes, file_kind
             FROM tb_images
             WHERE collection_id = ? AND status = 'complete'
             ORDER BY original_filename
@@ -136,9 +136,9 @@ $collections = $stmt->fetchAll();
                     <select name="gallery_action" class="action-select" required>
                         <option value="">Choose an action&hellip;</option>
                         <option value="tag">Set color tag&hellip;</option>
-                        <option value="download_full">Download full size images (zip)</option>
-                        <option value="download_medium">Download medium scaled images (zip)</option>
-                        <option value="download_small">Download small scaled images (zip)</option>
+                        <option value="download_full">Download everything, full size (zip)</option>
+                        <option value="download_medium">Download everything, photos resized to medium (zip)</option>
+                        <option value="download_small">Download everything, photos resized to small (zip)</option>
                     </select>
 
                     <select name="tag_color" class="tag-color-select" style="display:none;">
@@ -156,16 +156,31 @@ $collections = $stmt->fetchAll();
 
                 <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:1rem; margin-bottom:2rem;">
                     <?php foreach ($images as $image): ?>
+
                         <div style="position:relative;">
                             <input type="checkbox" name="ticked[]" value="<?= htmlspecialchars($image['stored_filename']) ?>"
                             class="thumb-checkbox<?= $image['tag_color'] !== 'none' ? ' tag-' . $image['tag_color'] : '' ?>"
                             style="position:absolute; top:8px; left:8px; width:20px; height:20px; z-index:1;">
-                            <a href="share_view.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection['collection_id'] ?>&file=<?= urlencode($image['stored_filename']) ?>" target="_blank">
-                                <img src="share_image.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection['collection_id'] ?>&file=<?= urlencode($image['stored_filename']) ?>&size=thumb"
-                                     alt="<?= htmlspecialchars($image['original_filename']) ?>"
-                                     class="thumbnail">
-                            </a>
+                            <?php if (!empty($image['notes'])): ?>
+                            <span class="has-note-badge" title="Has notes">&#9998;</span>
+                            <?php endif; ?>
+
+                            <?php if ($image['file_kind'] === 'image'): ?>
+                                <a href="share_view.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection['collection_id'] ?>&file=<?= urlencode($image['stored_filename']) ?>" target="_blank">
+                                    <img src="share_image.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection['collection_id'] ?>&file=<?= urlencode($image['stored_filename']) ?>&size=thumb"
+                                    alt="<?= htmlspecialchars($image['original_filename']) ?>"
+                                    class="thumbnail">
+                                </a>
+                            <?php else: ?>
+                                <a href="share_file_download.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection['collection_id'] ?>&file=<?= urlencode($image['stored_filename']) ?>">
+                                    <div class="file-badge">
+                                        <div class="file-badge-ext"><?= strtoupper(pathinfo($image['stored_filename'], PATHINFO_EXTENSION)) ?></div>
+                                        <div class="file-badge-name"><?= htmlspecialchars($image['original_filename']) ?></div>
+                                    </div>
+                                </a>
+                            <?php endif; ?>
                         </div>
+
                     <?php endforeach; ?>
                 </div>
             </form>
@@ -203,6 +218,14 @@ document.querySelectorAll('.tag-form').forEach(function (form)
         {
             alert('Please choose a color.');
             e.preventDefault();
+            return;
+        }
+
+        if (action.startsWith('download_'))
+        {
+            const applyBtn = form.querySelector('button[type="submit"]');
+            applyBtn.disabled = true;
+            applyBtn.textContent = 'Generating your download, please wait…';
         }
     });
 });

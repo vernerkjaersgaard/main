@@ -1,10 +1,11 @@
 <?php
 // share_view.php
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/log.php';
 
-$token = $_GET['token'] ?? '';
-$collection_id = (int)($_GET['collection_id'] ?? 0);
-$current_file = $_GET['file'] ?? '';
+$token = $_GET['token'] ?? $_POST['token'] ?? '';
+$collection_id = (int)($_GET['collection_id'] ?? $_POST['collection_id'] ?? 0);
+$current_file = $_GET['file'] ?? $_POST['file'] ?? '';
 
 if (!preg_match('/^[a-f0-9]{64}$/', $token))
 {
@@ -38,10 +39,50 @@ if ($safe_current === '' || $safe_current !== $current_file)
     exit('Invalid filename.');
 }
 
+// Handle adding a note. Same POST-Redirect-GET pattern as view.php, so
+// refreshing the page never re-submits the note. No session here — the
+// customer is always labeled generically, since the token doesn't
+// distinguish between different people who might share the same link.
+if ($_SERVER['REQUEST_METHOD'] === 'POST')
+{
+    $note_text = trim($_POST['note_text'] ?? '');
+
+    if ($note_text !== '')
+    {
+        $stmt = $pdo->prepare("
+            SELECT image_id, notes FROM tb_images
+            WHERE collection_id = ? AND stored_filename = ? AND status = 'complete'
+        ");
+        $stmt->execute([$collection_id, $safe_current]);
+        $image_row = $stmt->fetch();
+
+        if ($image_row)
+        {
+            $entry = '[' . date('Y-m-d H:i') . '] Customer: ' . $note_text;
+            $existing = $image_row['notes'];
+            $new_notes = ($existing === null || $existing === '') ? $entry : $existing . "\n" . $entry;
+
+            if (strlen($new_notes) > 4000)
+            {
+                header('Location: share_view.php?token=' . urlencode($token) . '&collection_id=' . $collection_id . '&file=' . urlencode($safe_current) . '&note_error=too_long');
+                exit;
+            }
+
+            $update = $pdo->prepare("UPDATE tb_images SET notes = ? WHERE image_id = ?");
+            $update->execute([$new_notes, $image_row['image_id']]);
+
+            log_action($pdo, null, 'share_note_added', $result['project_id'], $collection_id, 'on ' . $safe_current);
+        }
+    }
+
+    header('Location: share_view.php?token=' . urlencode($token) . '&collection_id=' . $collection_id . '&file=' . urlencode($safe_current));
+    exit;
+}
+
 $stmt = $pdo->prepare("
     SELECT stored_filename
     FROM tb_images
-    WHERE collection_id = ? AND status = 'complete'
+    WHERE collection_id = ? AND status = 'complete' AND file_kind = 'image'
     ORDER BY original_filename
 ");
 $stmt->execute([$collection_id]);
@@ -57,6 +98,10 @@ if ($current_index === false)
 
 $prev_file = ($current_index > 0) ? $images[$current_index - 1] : null;
 $next_file = ($current_index < count($images) - 1) ? $images[$current_index + 1] : null;
+
+$stmt = $pdo->prepare("SELECT notes FROM tb_images WHERE collection_id = ? AND stored_filename = ?");
+$stmt->execute([$collection_id, $safe_current]);
+$current_notes = $stmt->fetchColumn();
 ?>
 <!DOCTYPE html>
 <html>
@@ -83,10 +128,34 @@ $next_file = ($current_index < count($images) - 1) ? $images[$current_index + 1]
         <a href="share_image.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection_id ?>&file=<?= urlencode($safe_current) ?>&size=full" target="_blank">
             View full resolution
         </a>
+        &nbsp;|&nbsp;
+        <a href="#notes"><?= $current_notes ? '💬 View notes' : '💬 Add a note' ?></a>
     </p>
 </div>
 
-<p style="text-align:center;">
+<div id="notes" style="margin-top:1.5rem;">
+    <h3>Notes</h3>
+
+    <?php if (isset($_GET['note_error']) && $_GET['note_error'] === 'too_long'): ?>
+        <p style="color:red;">Notes are full (4000 character limit reached) — please continue the conversation another way.</p>
+    <?php endif; ?>
+
+    <?php if ($current_notes): ?>
+        <div class="notes-box"><?= nl2br(htmlspecialchars($current_notes)) ?></div>
+    <?php else: ?>
+        <p><em>No notes yet.</em></p>
+    <?php endif; ?>
+
+    <form method="post" style="margin-top:0.75rem;">
+        <input type="hidden" name="token" value="<?= htmlspecialchars($token) ?>">
+        <input type="hidden" name="collection_id" value="<?= $collection_id ?>">
+        <input type="hidden" name="file" value="<?= htmlspecialchars($safe_current) ?>">
+        <textarea name="note_text" rows="3" placeholder="Add a note..." required></textarea>
+        <button type="submit">Add Note</button>
+    </form>
+</div>
+
+<p style="text-align:center; margin-top:1.5rem;">
     <?php if ($prev_file): ?>
         <a href="share_view.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection_id ?>&file=<?= urlencode($prev_file) ?>">&larr; Previous</a>
     <?php endif; ?>

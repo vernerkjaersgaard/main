@@ -36,7 +36,7 @@ if ($safe_filename === '' || $safe_filename !== $file)
 
 $stmt = $pdo->prepare("
     SELECT image_id FROM tb_images
-    WHERE collection_id = ? AND stored_filename = ? AND status = 'complete'
+    WHERE collection_id = ? AND stored_filename = ? AND status = 'complete' AND file_kind = 'image'
 ");
 $stmt->execute([$collection_id, $safe_filename]);
 

@@ -56,7 +56,7 @@ if (empty($candidate_files))
 
 $placeholders = implode(',', array_fill(0, count($candidate_files), '?'));
 $stmt = $pdo->prepare("
-    SELECT image_id, stored_filename
+    SELECT image_id, stored_filename, file_kind
     FROM tb_images
     WHERE collection_id = ? AND status = 'complete' AND stored_filename IN ($placeholders)
 ");
@@ -71,6 +71,11 @@ if (empty($valid_images))
 
 $safe_files = array_column($valid_images, 'stored_filename');
 $image_ids = array_column($valid_images, 'image_id');
+
+// Lookup map so the download loop below knows, per filename, whether it's
+// a real image (originals/, resizable) or a foreign file (files/, never
+// resized regardless of which download size was requested).
+$file_kind_by_name = array_column($valid_images, 'file_kind', 'stored_filename');
 
 // ---------------------------------------------------------------
 // TAG
@@ -103,6 +108,24 @@ if ($action === 'tag')
 // ---------------------------------------------------------------
 if (in_array($action, ['download_full', 'download_medium', 'download_small'], true))
 {
+    // Special case: exactly one file selected, and it's already a foreign
+    // ZIP — download it directly, unwrapped, rather than producing a
+    // pointless zip-of-one-zip. Applies regardless of which size tier was
+    // requested, since resizing has no meaning for a ZIP anyway.
+    if (count($valid_images) === 1)
+    {
+        $only_file = $valid_images[0];
+        $only_extension = strtolower(pathinfo($only_file['stored_filename'], PATHINFO_EXTENSION));
+
+        if ($only_file['file_kind'] === 'file' && $only_extension === 'zip')
+        {
+            log_action($pdo, null, 'share_' . $action, $result['project_id'], $collection_id, '1 file (unwrapped zip)');
+
+            header('Location: share_file_download.php?token=' . urlencode($token) . '&collection_id=' . $collection_id . '&file=' . urlencode($only_file['stored_filename']));
+            exit;
+        }
+    }
+
     require_once __DIR__ . '/vendor/autoload.php';
 
     // No logged-in user here, so temp zips are grouped by a fresh random
@@ -118,6 +141,7 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
     }
 
     $originals_dir = $result['storage_path'] . '/originals';
+    $files_dir     = $result['storage_path'] . '/files';
     $chunks = array_chunk($safe_files, 70);
     $tokens = [];
 
@@ -132,14 +156,19 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
 
         foreach ($chunk as $filename)
         {
-            $source_path = $originals_dir . '/' . $filename;
+            $kind = $file_kind_by_name[$filename] ?? 'image';
+            $source_path = ($kind === 'image')
+                ? $originals_dir . '/' . $filename
+                : $files_dir . '/' . $filename;
 
             if (!is_file($source_path))
             {
                 continue;
             }
 
-            if ($action === 'download_full')
+            // Foreign files are never resized, regardless of which size
+            // tier was requested.
+            if ($action === 'download_full' || $kind !== 'image')
             {
                 $zip->addFile($source_path, $filename);
             }
@@ -171,7 +200,7 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
 
     $token_list = implode(',', $tokens);
 
-    log_action($pdo, null, 'share_' . $action, $result['project_id'], $collection_id, count($safe_files) . ' image(s)');
+    log_action($pdo, null, 'share_' . $action, $result['project_id'], $collection_id, count($safe_files) . ' image(s)/file(s)');
 
     header('Location: share_download_results.php?token=' . urlencode($token) . '&collection_id=' . $collection_id . '&batch=' . $batch_id . '&tokens=' . urlencode($token_list));
     exit;

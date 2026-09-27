@@ -24,7 +24,7 @@ if (!$collection)
 }
 
 $stmt = $pdo->prepare("
-    SELECT stored_filename, original_filename, tag_color
+    SELECT stored_filename, original_filename, tag_color, notes, file_kind
     FROM tb_images
     WHERE collection_id = ? AND status = 'complete'
     ORDER BY original_filename
@@ -78,8 +78,8 @@ require_once __DIR__ . '/header.php';
 <?php endif; ?>
 
 <div>
-    <label>Select images to upload
-        <input type="file" id="file-input" accept="image/jpeg,image/png,image/gif,image/webp" multiple>
+    <label>Select images or files to upload
+        <input type="file" id="file-input" accept=".jpg,.jpeg,.png,.gif,.webp,.psd,.tif,.tiff,.ai,.eps,.pdf,.zip,.rar" multiple>
     </label>
     <button type="button" id="start-upload-btn">Upload</button>
 </div>
@@ -122,9 +122,9 @@ require_once __DIR__ . '/header.php';
             <select name="gallery_action" id="action-select" required>
                 <option value="">Choose an action&hellip;</option>
                 <option value="tag">Set color tag&hellip;</option>
-                <option value="download_full">Download full size images (zip)</option>
-                <option value="download_medium">Download medium scaled images (zip)</option>
-                <option value="download_small">Download small scaled images (zip)</option>
+                <option value="download_full">Download everything, full size (zip)</option>
+                <option value="download_medium">Download everything, photos resized to medium (zip)</option>
+                <option value="download_small">Download everything, photos resized to small (zip)</option>
                 <option value="delete">Delete ticked images</option>
             </select>
 
@@ -143,16 +143,31 @@ require_once __DIR__ . '/header.php';
 
         <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:1rem;">
             <?php foreach ($images as $image): ?>
+
                 <div style="position:relative;">
                     <input type="checkbox" name="ticked[]" value="<?= htmlspecialchars($image['stored_filename']) ?>"
-                        class="thumb-checkbox<?= $image['tag_color'] !== 'none' ? ' tag-' . $image['tag_color'] : '' ?>"
-                        style="position:absolute; top:8px; left:8px; width:20px; height:20px; z-index:1;">
-                    <a href="view.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($image['stored_filename']) ?>" target="_blank">
+                    class="thumb-checkbox<?= $image['tag_color'] !== 'none' ? ' tag-' . $image['tag_color'] : '' ?>"
+                    style="position:absolute; top:8px; left:8px; width:20px; height:20px; z-index:1;">
+                    <?php if (!empty($image['notes'])): ?>
+                        <span class="has-note-badge" title="Has notes">&#9998;</span>
+                    <?php endif; ?>
+
+                    <?php if ($image['file_kind'] === 'image'): ?>
+                        <a href="view.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($image['stored_filename']) ?>" target="_blank">
                         <img src="image.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($image['stored_filename']) ?>&size=thumb"
                         alt="<?= htmlspecialchars($image['original_filename']) ?>"
                         class="thumbnail">
-                    </a>
+                        </a>
+                    <?php else: ?>
+                        <a href="file_download.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($image['stored_filename']) ?>">
+                            <div class="file-badge">
+                                <div class="file-badge-ext"><?= strtoupper(pathinfo($image['stored_filename'], PATHINFO_EXTENSION)) ?></div>
+                                <div class="file-badge-name"><?= htmlspecialchars($image['original_filename']) ?></div>
+                            </div>
+                        </a>
+                    <?php endif; ?>
                 </div>
+
             <?php endforeach; ?>
         </div>
     </form>
@@ -167,7 +182,7 @@ document.getElementById('start-upload-btn')?.addEventListener('click', async fun
 
     if (files.length === 0)
     {
-        alert('Please select at least one image first.');
+        alert('Please select at least one file first.');
         return;
     }
 
@@ -310,8 +325,16 @@ document.getElementById('gallery-form')?.addEventListener('submit', function (e)
     if (action === 'delete' && !confirm(`Delete ${ticked} selected image(s)? This cannot be undone.`))
     {
         e.preventDefault();
+        return;
+    }
+
+    if (action.startsWith('download_'))
+    {
+        document.getElementById('apply-btn').disabled = true;
+        document.getElementById('apply-btn').textContent = 'Generating your download, please wait…';
     }
 });
+
 </script>
 
 <?php require_once __DIR__ . '/footer.php'; ?>

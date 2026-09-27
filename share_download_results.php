@@ -6,6 +6,7 @@ $token = $_GET['token'] ?? '';
 $collection_id = (int)($_GET['collection_id'] ?? 0);
 $batch_id = $_GET['batch'] ?? '';
 $zip_tokens = array_filter(explode(',', $_GET['tokens'] ?? ''));
+$total = count($zip_tokens);
 
 if (!preg_match('/^[a-f0-9]{64}$/', $token) || !preg_match('/^[a-f0-9]{32}$/', $batch_id))
 {
@@ -16,14 +17,14 @@ if (!preg_match('/^[a-f0-9]{64}$/', $token) || !preg_match('/^[a-f0-9]{32}$/', $
 require_once __DIR__ . '/header.php';
 ?>
 
-<h1>Your Download<?= count($zip_tokens) > 1 ? 's are' : ' is' ?> Ready</h1>
+<h1>Your Download<?= $total > 1 ? 's are' : ' is' ?> Ready</h1>
 
 <?php if (empty($zip_tokens)): ?>
     <p>No files were generated.</p>
 <?php else: ?>
     <ul>
         <?php foreach ($zip_tokens as $i => $zip_token): ?>
-            <li><a href="share_zip_download.php?batch=<?= htmlspecialchars($batch_id) ?>&file=<?= htmlspecialchars($zip_token) ?>">Download zip <?= $i + 1 ?> of <?= count($zip_tokens) ?></a></li>
+            <li><a href="share_zip_download.php?batch=<?= htmlspecialchars($batch_id) ?>&file=<?= htmlspecialchars($zip_token) ?>&part=<?= $i + 1 ?>&total=<?= $total ?>">Download zip <?= $i + 1 ?> of <?= $total ?></a></li>
         <?php endforeach; ?>
     </ul>
 <?php endif; ?>

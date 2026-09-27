@@ -140,3 +140,64 @@
 {
     color: var(--tag-blue);
 }
+
+.notes-box
+{
+    background: #f7f7f7;
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+}
+
+.has-note-badge
+{
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--pico-primary);
+    color: #FFFFFF;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: bold;
+    z-index: 1;
+}
+
+.file-badge
+{
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 6px;
+    border: 1px solid var(--pico-primary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #f0f0f0;
+    padding: 0.5rem;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.file-badge-ext
+{
+    font-size: 1.4rem;
+    font-weight: bold;
+    color: var(--pico-primary);
+    margin-bottom: 0.4rem;
+}
+
+.file-badge-name
+{
+    font-size: 0.75rem;
+    color: #444;
+    word-break: break-word;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+}

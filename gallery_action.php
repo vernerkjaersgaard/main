@@ -47,7 +47,7 @@ if (empty($candidate_files))
 
 $placeholders = implode(',', array_fill(0, count($candidate_files), '?'));
 $stmt = $pdo->prepare("
-    SELECT image_id, stored_filename
+    SELECT image_id, stored_filename, file_kind
     FROM tb_images
     WHERE collection_id = ? AND status = 'complete' AND stored_filename IN ($placeholders)
 ");
@@ -62,6 +62,11 @@ if (empty($valid_images))
 
 $safe_files = array_column($valid_images, 'stored_filename');
 $image_ids = array_column($valid_images, 'image_id');
+
+// Lookup map so the download loop below knows, per filename, whether it's
+// a real image (originals/, resizable) or a foreign file (files/, never
+// resized regardless of which download size was requested).
+$file_kind_by_name = array_column($valid_images, 'file_kind', 'stored_filename');
 
 // ---------------------------------------------------------------
 // TAG
@@ -95,28 +100,43 @@ if ($action === 'delete')
     $originals_dir = $collection['storage_path'] . '/originals';
     $thumbs_dir    = $collection['storage_path'] . '/thumbs';
     $medium_dir    = $collection['storage_path'] . '/medium';
+    $files_dir     = $collection['storage_path'] . '/files';
 
     $deleted_count = 0;
 
-    foreach ($safe_files as $filename)
+    foreach ($valid_images as $image_row)
     {
-        $original_path = $originals_dir . '/' . $filename;
-        $thumb_path    = $thumbs_dir . '/' . $filename;
-        $medium_path   = $medium_dir . '/' . $filename;
+        $filename = $image_row['stored_filename'];
 
-        if (is_file($original_path))
+        if ($image_row['file_kind'] === 'image')
         {
-            unlink($original_path);
+            $original_path = $originals_dir . '/' . $filename;
+            $thumb_path    = $thumbs_dir . '/' . $filename;
+            $medium_path   = $medium_dir . '/' . $filename;
+
+            if (is_file($original_path))
+            {
+                unlink($original_path);
+            }
+
+            if (is_file($thumb_path))
+            {
+                unlink($thumb_path);
+            }
+
+            if (is_file($medium_path))
+            {
+                unlink($medium_path);
+            }
         }
-
-        if (is_file($thumb_path))
+        else
         {
-            unlink($thumb_path);
-        }
+            $file_path = $files_dir . '/' . $filename;
 
-        if (is_file($medium_path))
-        {
-            unlink($medium_path);
+            if (is_file($file_path))
+            {
+                unlink($file_path);
+            }
         }
 
         $deleted_count++;
@@ -126,7 +146,7 @@ if ($action === 'delete')
     $delete = $pdo->prepare("DELETE FROM tb_images WHERE image_id IN ($id_placeholders)");
     $delete->execute($image_ids);
 
-    log_action($pdo, $_SESSION['user_id'], 'delete_images', $collection['project_id'], $collection_id, $deleted_count . ' image(s) deleted');
+    log_action($pdo, $_SESSION['user_id'], 'delete_images', $collection['project_id'], $collection_id, $deleted_count . ' image(s)/file(s) deleted');
 
     header('Location: upload.php?collection_id=' . $collection_id . '&deleted=' . $deleted_count);
     exit;
@@ -137,6 +157,24 @@ if ($action === 'delete')
 // ---------------------------------------------------------------
 if (in_array($action, ['download_full', 'download_medium', 'download_small'], true))
 {
+    // Special case: exactly one file selected, and it's already a foreign
+    // ZIP — download it directly, unwrapped, rather than producing a
+    // pointless zip-of-one-zip. Applies regardless of which size tier was
+    // requested, since resizing has no meaning for a ZIP anyway.
+    if (count($valid_images) === 1)
+    {
+        $only_file = $valid_images[0];
+        $only_extension = strtolower(pathinfo($only_file['stored_filename'], PATHINFO_EXTENSION));
+
+        if ($only_file['file_kind'] === 'file' && $only_extension === 'zip')
+        {
+            log_action($pdo, $_SESSION['user_id'], $action, $collection['project_id'], $collection_id, '1 file (unwrapped zip)');
+
+            header('Location: file_download.php?collection_id=' . $collection_id . '&file=' . urlencode($only_file['stored_filename']));
+            exit;
+        }
+    }
+
     require_once __DIR__ . '/vendor/autoload.php';
 
     $user_id = $_SESSION['user_id'];
@@ -148,6 +186,7 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
     }
 
     $originals_dir = $collection['storage_path'] . '/originals';
+    $files_dir     = $collection['storage_path'] . '/files';
     $chunks = array_chunk($safe_files, 70);
     $tokens = [];
 
@@ -162,14 +201,20 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
 
         foreach ($chunk as $filename)
         {
-            $source_path = $originals_dir . '/' . $filename;
+            $kind = $file_kind_by_name[$filename] ?? 'image';
+            $source_path = ($kind === 'image')
+                ? $originals_dir . '/' . $filename
+                : $files_dir . '/' . $filename;
 
             if (!is_file($source_path))
             {
                 continue;
             }
 
-            if ($action === 'download_full')
+            // Foreign files are never resized, regardless of which size
+            // tier was requested — a PSD or ZIP has no meaningful
+            // "medium" version, so it's always included at full size.
+            if ($action === 'download_full' || $kind !== 'image')
             {
                 $zip->addFile($source_path, $filename);
             }
@@ -201,7 +246,7 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
 
     $token_list = implode(',', $tokens);
 
-    log_action($pdo, $_SESSION['user_id'], $action, $collection['project_id'], $collection_id, count($safe_files) . ' image(s)');
+    log_action($pdo, $_SESSION['user_id'], $action, $collection['project_id'], $collection_id, count($safe_files) . ' image(s)/file(s)');
 
     header('Location: download_results.php?collection_id=' . $collection_id . '&tokens=' . urlencode($token_list));
     exit;

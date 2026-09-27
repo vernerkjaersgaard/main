@@ -73,6 +73,7 @@ if (!isset($_FILES['image']))
 
 $originals_dir = $collection['storage_path'] . '/originals';
 $thumbs_dir    = $collection['storage_path'] . '/thumbs';
+$files_dir     = $collection['storage_path'] . '/files';
 
 if (!is_dir($originals_dir))
 {
@@ -82,11 +83,15 @@ if (!is_dir($thumbs_dir))
 {
     mkdir($thumbs_dir, 0775, true);
 }
+if (!is_dir($files_dir))
+{
+    mkdir($files_dir, 0775, true);
+}
 
-$allowed_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-$max_file_size = 80 * 1024 * 1024; // 80 MB — this is now a genuinely
-                                    // meaningful ceiling again, since each
-                                    // request carries only ONE file.
+$allowed_image_extensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+$allowed_foreign_extensions = ['psd', 'tif', 'tiff', 'ai', 'eps', 'pdf', 'zip', 'rar'];
+$max_file_size = 80 * 1024 * 1024; // 80 MB — applies to both images and
+                                    // foreign files, per our earlier decision.
 
 $file = $_FILES['image'];
 $original_name = $file['name'];
@@ -108,44 +113,69 @@ if ($file['size'] > $max_file_size)
 }
 
 $extension = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
+$is_image = in_array($extension, $allowed_image_extensions, true);
+$is_foreign = in_array($extension, $allowed_foreign_extensions, true);
 
-if (!in_array($extension, $allowed_extensions, true))
+if (!$is_image && !$is_foreign)
 {
-    respond_error($original_name, 'Only JPG, PNG, GIF, and WEBP files are allowed.');
+    respond_error($original_name, 'File type not allowed. Accepted: JPG, PNG, GIF, WEBP, PSD, TIF/TIFF, AI, EPS, PDF, ZIP, RAR.');
 }
 
-$image_info = @getimagesize($file['tmp_name']);
-
-if ($image_info === false)
+// Only genuine image files go through getimagesize() validation — a PSD,
+// ZIP, etc. would legitimately fail this check even though it's a
+// perfectly valid upload of its own kind, so foreign files skip it entirely.
+if ($is_image)
 {
-    respond_error($original_name, 'Not a valid image.');
+    $image_info = @getimagesize($file['tmp_name']);
+
+    if ($image_info === false)
+    {
+        respond_error($original_name, 'Not a valid image.');
+    }
 }
+
+// Foreign files are stored in files/ instead of originals/, so the
+// filename-collision check needs to look in the correct directory
+// depending on which kind this upload actually is.
+$target_dir = $is_image ? $originals_dir : $files_dir;
 
 $safe_base = str_replace(' ', '_', pathinfo($original_name, PATHINFO_FILENAME));
 $safe_base = preg_replace('/[^a-zA-Z0-9_-]/', '_', $safe_base);
 $stored_filename = $safe_base . '.' . $extension;
 $counter = 1;
 
-while (file_exists($originals_dir . '/' . $stored_filename))
+while (file_exists($target_dir . '/' . $stored_filename))
 {
     $stored_filename = $safe_base . '_' . $counter . '.' . $extension;
     $counter++;
 }
 
 $insert = $pdo->prepare("
-    INSERT INTO tb_images (collection_id, original_filename, stored_filename, file_size, status)
-    VALUES (?, ?, ?, ?, 'pending')
+    INSERT INTO tb_images (collection_id, original_filename, stored_filename, file_size, status, file_kind)
+    VALUES (?, ?, ?, ?, 'pending', ?)
 ");
-$insert->execute([$collection_id, $original_name, $stored_filename, $file['size']]);
+$insert->execute([$collection_id, $original_name, $stored_filename, $file['size'], $is_image ? 'image' : 'file']);
 $image_id = $pdo->lastInsertId();
 
-$destination = $originals_dir . '/' . $stored_filename;
+$destination = $target_dir . '/' . $stored_filename;
 
 if (!move_uploaded_file($file['tmp_name'], $destination))
 {
     $update = $pdo->prepare("UPDATE tb_images SET status = 'failed' WHERE image_id = ?");
     $update->execute([$image_id]);
     respond_error($original_name, 'Failed to save file.');
+}
+
+// Foreign files have no thumbnail to generate — mark complete immediately.
+if (!$is_image)
+{
+    $update = $pdo->prepare("UPDATE tb_images SET status = 'complete' WHERE image_id = ?");
+    $update->execute([$image_id]);
+
+    log_action($pdo, $_SESSION['user_id'], 'upload', $collection['project_id'], $collection_id, $original_name . ' (file)');
+
+    echo json_encode(['ok' => true, 'original_filename' => $original_name, 'stored_filename' => $stored_filename]);
+    exit;
 }
 
 try
