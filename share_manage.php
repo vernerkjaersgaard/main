@@ -54,7 +54,7 @@ $links = $stmt->fetchAll();
 
 require_once __DIR__ . '/header.php';
 
-$base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
+$base_url = BASE_URL;
 ?>
 
 <p><a href="collections.php?project_id=<?= $project_id ?>">&larr; Back to <?= htmlspecialchars($project['project_name']) ?></a></p>

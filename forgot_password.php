@@ -31,8 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
             ");
             $update->execute([$token, $user['user_id']]);
 
-            $reset_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http')
-                . '://' . $_SERVER['HTTP_HOST'] . '/reset_password.php?token=' . $token;
+            $reset_url = BASE_URL . '/reset_password.php?token=' . $token;
 
             $body = "Hi " . $user['username'] . ",\n\n"
                 . "We received a request to reset your Gallery password. Click the link below to choose a new one:\n\n"
