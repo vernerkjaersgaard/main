@@ -39,9 +39,13 @@ if ($safe_filename === '' || $safe_filename !== $file)
     exit('Invalid filename.');
 }
 
+// Same source-of-truth check as share_image.php — a genuine, complete,
+// tracked file belonging to THIS collection, not just something that
+// happens to exist on disk.
 $stmt = $pdo->prepare("
-    SELECT original_filename FROM tb_images
-    WHERE collection_id = ? AND stored_filename = ? AND status = 'complete' AND file_kind = 'file'
+    SELECT original_filename
+    FROM tb_images
+    WHERE collection_id = ? AND stored_filename = ? AND status = 'complete'
 ");
 $stmt->execute([$collection_id, $safe_filename]);
 $image_row = $stmt->fetch();
@@ -60,9 +64,11 @@ if (!is_file($path))
     exit('File not found.');
 }
 
-log_action($pdo, null, 'share_file_download', $result['project_id'], $collection_id, $image_row['original_filename']);
+log_action($pdo, null, 'share_download_file', $result['project_id'], $collection_id, $image_row['original_filename']);
 
-header('Content-Type: application/octet-stream');
+$mime_type = mime_content_type($path) ?: 'application/octet-stream';
+
+header('Content-Type: ' . $mime_type);
 header('Content-Disposition: attachment; filename="' . $image_row['original_filename'] . '"');
 header('Content-Length: ' . filesize($path));
 

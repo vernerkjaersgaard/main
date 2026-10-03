@@ -19,7 +19,7 @@ $collection = $stmt->fetch();
 if (!$collection)
 {
     http_response_code(404);
-    exit('Not found.');
+    exit('Collection not found.');
 }
 
 $safe_filename = basename($file);
@@ -30,13 +30,14 @@ if ($safe_filename === '' || $safe_filename !== $file)
     exit('Invalid filename.');
 }
 
-// Only genuine, complete FOREIGN files are servable here — an image row
-// requesting this endpoint (wrong path, or a tampered URL) is rejected,
-// just as image.php rejects anything that isn't file_kind = 'image'
-// implicitly by only ever looking in originals/thumbs/medium.
+// Confirm this is a genuine, complete, tracked file belonging to this
+// collection — same source-of-truth check used throughout the project —
+// and pull its original filename back so the download preserves it
+// rather than exposing the sanitized stored name to the user.
 $stmt = $pdo->prepare("
-    SELECT original_filename FROM tb_images
-    WHERE collection_id = ? AND stored_filename = ? AND status = 'complete' AND file_kind = 'file'
+    SELECT original_filename
+    FROM tb_images
+    WHERE collection_id = ? AND stored_filename = ? AND status = 'complete'
 ");
 $stmt->execute([$collection_id, $safe_filename]);
 $image_row = $stmt->fetch();
@@ -55,12 +56,11 @@ if (!is_file($path))
     exit('File not found.');
 }
 
-log_action($pdo, $_SESSION['user_id'], 'file_download', $collection['project_id'], $collection_id, $image_row['original_filename']);
+log_action($pdo, $_SESSION['user_id'], 'download_file', $collection['project_id'], $collection_id, $image_row['original_filename']);
 
-// force-download with the user's ORIGINAL filename, not the sanitized
-// stored one — so a PSD they get back is named the way they expect,
-// not something like "layered_design_1.psd" with an appended counter.
-header('Content-Type: application/octet-stream');
+$mime_type = mime_content_type($path) ?: 'application/octet-stream';
+
+header('Content-Type: ' . $mime_type);
 header('Content-Disposition: attachment; filename="' . $image_row['original_filename'] . '"');
 header('Content-Length: ' . filesize($path));
 

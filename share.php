@@ -12,9 +12,10 @@ if (!preg_match('/^[a-f0-9]{64}$/', $token))
 }
 
 $stmt = $pdo->prepare("
-    SELECT sl.share_id, sl.ttl_days, sl.created_at, p.project_id, p.project_name
+    SELECT sl.share_id, sl.ttl_days, sl.created_at, p.project_id, p.project_name, u.email AS photographer_email
     FROM tb_share_links sl
     JOIN tb_projects p ON p.project_id = sl.project_id
+    JOIN tb_users u ON u.user_id = p.user_id
     WHERE sl.token = ? AND sl.revoked_at IS NULL
 ");
 $stmt->execute([$token]);
@@ -52,6 +53,8 @@ $collections = $stmt->fetchAll();
 <main class="container">
 
 <h1><?= htmlspecialchars($share['project_name']) ?></h1>
+
+<p><a href="mailto:<?= htmlspecialchars($share['photographer_email']) ?>">Email the photographer</a></p>
 
 <?php if (count($collections) > 1): ?>
     <nav aria-label="Collections">
@@ -91,15 +94,15 @@ $collections = $stmt->fetchAll();
 
         <?php
         $stmt = $pdo->prepare("
-            SELECT stored_filename, original_filename, tag_color, notes, file_kind
-            FROM tb_images
-            WHERE collection_id = ? AND status = 'complete'
-            ORDER BY original_filename
+            SELECT i.stored_filename, i.original_filename, i.tag_color, i.notes, aft.file_kind, aft.extension
+            FROM tb_images i
+            JOIN tb_allowed_filetypes aft ON aft.filetype_id = i.filetype_id
+            WHERE i.collection_id = ? AND i.status = 'complete'
+            ORDER BY i.original_filename
         ");
         $stmt->execute([$collection['collection_id']]);
         $images = $stmt->fetchAll();
 
-        // Tally counts per color for the summary line above this collection's grid
         $tag_counts = ['red' => 0, 'green' => 0, 'blue' => 0, 'yellow' => 0, 'purple' => 0, 'none' => 0];
         foreach ($images as $image)
         {
@@ -136,9 +139,9 @@ $collections = $stmt->fetchAll();
                     <select name="gallery_action" class="action-select" required>
                         <option value="">Choose an action&hellip;</option>
                         <option value="tag">Set color tag&hellip;</option>
-                        <option value="download_full">Download everything, full size (zip)</option>
-                        <option value="download_medium">Download everything, photos resized to medium (zip)</option>
-                        <option value="download_small">Download everything, photos resized to small (zip)</option>
+                        <option value="download_full">Download full size (zip)</option>
+                        <option value="download_medium">Download medium scaled (zip)</option>
+                        <option value="download_small">Download small scaled (zip)</option>
                     </select>
 
                     <select name="tag_color" class="tag-color-select" style="display:none;">
@@ -156,31 +159,27 @@ $collections = $stmt->fetchAll();
 
                 <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:1rem; margin-bottom:2rem;">
                     <?php foreach ($images as $image): ?>
-
                         <div style="position:relative;">
                             <input type="checkbox" name="ticked[]" value="<?= htmlspecialchars($image['stored_filename']) ?>"
                             class="thumb-checkbox<?= $image['tag_color'] !== 'none' ? ' tag-' . $image['tag_color'] : '' ?>"
                             style="position:absolute; top:8px; left:8px; width:20px; height:20px; z-index:1;">
                             <?php if (!empty($image['notes'])): ?>
-                            <span class="has-note-badge" title="Has notes">&#9998;</span>
+                                <span class="has-note-badge" title="Has notes">&#9998;</span>
                             <?php endif; ?>
 
                             <?php if ($image['file_kind'] === 'image'): ?>
                                 <a href="share_view.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection['collection_id'] ?>&file=<?= urlencode($image['stored_filename']) ?>" target="_blank">
                                     <img src="share_image.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection['collection_id'] ?>&file=<?= urlencode($image['stored_filename']) ?>&size=thumb"
-                                    alt="<?= htmlspecialchars($image['original_filename']) ?>"
-                                    class="thumbnail">
+                                         alt="<?= htmlspecialchars($image['original_filename']) ?>"
+                                         class="thumbnail">
                                 </a>
                             <?php else: ?>
-                                <a href="share_file_download.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection['collection_id'] ?>&file=<?= urlencode($image['stored_filename']) ?>">
-                                    <div class="file-badge">
-                                        <div class="file-badge-ext"><?= strtoupper(pathinfo($image['stored_filename'], PATHINFO_EXTENSION)) ?></div>
-                                        <div class="file-badge-name"><?= htmlspecialchars($image['original_filename']) ?></div>
-                                    </div>
+                                <a href="share_file_info.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection['collection_id'] ?>&file=<?= urlencode($image['stored_filename']) ?>" class="filebadge">
+                                    <span class="filebadge-ext"><?= htmlspecialchars($image['extension']) ?></span>
+                                    <span class="filebadge-name"><?= htmlspecialchars($image['original_filename']) ?></span>
                                 </a>
                             <?php endif; ?>
                         </div>
-
                     <?php endforeach; ?>
                 </div>
             </form>
@@ -209,7 +208,7 @@ document.querySelectorAll('.tag-form').forEach(function (form)
 
         if (ticked === 0)
         {
-            alert('Please tick at least one image first.');
+            alert('Please tick at least one item first.');
             e.preventDefault();
             return;
         }
@@ -249,7 +248,6 @@ document.querySelectorAll('.action-select').forEach(function (actionSelect)
         }
     });
 });
-
 </script>
 
 </main>

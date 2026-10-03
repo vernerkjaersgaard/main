@@ -23,11 +23,15 @@ if (!$collection)
     exit;
 }
 
+// file_kind/extension now come from tb_allowed_filetypes via the FK,
+// not a column on tb_images itself — one join gives us everything
+// needed to decide how to render each grid cell.
 $stmt = $pdo->prepare("
-    SELECT stored_filename, original_filename, tag_color, notes, file_kind
-    FROM tb_images
-    WHERE collection_id = ? AND status = 'complete'
-    ORDER BY original_filename
+    SELECT i.stored_filename, i.original_filename, i.tag_color, i.notes, aft.file_kind, aft.extension
+    FROM tb_images i
+    JOIN tb_allowed_filetypes aft ON aft.filetype_id = i.filetype_id
+    WHERE i.collection_id = ? AND i.status = 'complete'
+    ORDER BY i.original_filename
 ");
 $stmt->execute([$collection_id]);
 $images = $stmt->fetchAll();
@@ -79,7 +83,7 @@ require_once __DIR__ . '/header.php';
 
 <div>
     <label>Select images or files to upload
-        <input type="file" id="file-input" accept=".jpg,.jpeg,.png,.gif,.webp,.psd,.tif,.tiff,.ai,.eps,.pdf,.zip,.rar" multiple>
+        <input type="file" id="file-input" multiple>
     </label>
     <button type="button" id="start-upload-btn">Upload</button>
 </div>
@@ -122,10 +126,10 @@ require_once __DIR__ . '/header.php';
             <select name="gallery_action" id="action-select" required>
                 <option value="">Choose an action&hellip;</option>
                 <option value="tag">Set color tag&hellip;</option>
-                <option value="download_full">Download everything, full size (zip)</option>
-                <option value="download_medium">Download everything, photos resized to medium (zip)</option>
-                <option value="download_small">Download everything, photos resized to small (zip)</option>
-                <option value="delete">Delete ticked images</option>
+                <option value="download_full">Download full size (zip)</option>
+                <option value="download_medium">Download medium scaled (zip)</option>
+                <option value="download_small">Download small scaled (zip)</option>
+                <option value="delete">Delete ticked items</option>
             </select>
 
             <select name="tag_color" id="tag-color-select" style="display:none;">
@@ -143,31 +147,27 @@ require_once __DIR__ . '/header.php';
 
         <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:1rem;">
             <?php foreach ($images as $image): ?>
-
                 <div style="position:relative;">
                     <input type="checkbox" name="ticked[]" value="<?= htmlspecialchars($image['stored_filename']) ?>"
-                    class="thumb-checkbox<?= $image['tag_color'] !== 'none' ? ' tag-' . $image['tag_color'] : '' ?>"
-                    style="position:absolute; top:8px; left:8px; width:20px; height:20px; z-index:1;">
+                           class="thumb-checkbox<?= $image['tag_color'] !== 'none' ? ' tag-' . $image['tag_color'] : '' ?>"
+                           style="position:absolute; top:8px; left:8px; width:20px; height:20px; z-index:1;">
                     <?php if (!empty($image['notes'])): ?>
                         <span class="has-note-badge" title="Has notes">&#9998;</span>
                     <?php endif; ?>
 
                     <?php if ($image['file_kind'] === 'image'): ?>
                         <a href="view.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($image['stored_filename']) ?>" target="_blank">
-                        <img src="image.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($image['stored_filename']) ?>&size=thumb"
-                        alt="<?= htmlspecialchars($image['original_filename']) ?>"
-                        class="thumbnail">
+                            <img src="image.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($image['stored_filename']) ?>&size=thumb"
+                                 alt="<?= htmlspecialchars($image['original_filename']) ?>"
+                                 class="thumbnail">
                         </a>
                     <?php else: ?>
-                        <a href="file_download.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($image['stored_filename']) ?>">
-                            <div class="file-badge">
-                                <div class="file-badge-ext"><?= strtoupper(pathinfo($image['stored_filename'], PATHINFO_EXTENSION)) ?></div>
-                                <div class="file-badge-name"><?= htmlspecialchars($image['original_filename']) ?></div>
-                            </div>
+                        <a href="file_info.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($image['stored_filename']) ?>" class="filebadge">
+                            <span class="filebadge-ext"><?= htmlspecialchars($image['extension']) ?></span>
+                            <span class="filebadge-name"><?= htmlspecialchars($image['original_filename']) ?></span>
                         </a>
                     <?php endif; ?>
                 </div>
-
             <?php endforeach; ?>
         </div>
     </form>
@@ -235,7 +235,7 @@ document.getElementById('start-upload-btn')?.addEventListener('click', async fun
         overallProgress.value = i + 1;
     }
 
-    overallStatus.textContent = `Done: ${successCount} succeeded, ${failCount} failed. Reloading&hellip;`;
+    overallStatus.textContent = `Done: ${successCount} succeeded, ${failCount} failed. Reloading…`;
 
     setTimeout(() => window.location.reload(), 1200);
 });
@@ -310,7 +310,7 @@ document.getElementById('gallery-form')?.addEventListener('submit', function (e)
 
     if (ticked === 0)
     {
-        alert('Please tick at least one image first.');
+        alert('Please tick at least one item first.');
         e.preventDefault();
         return;
     }
@@ -322,7 +322,7 @@ document.getElementById('gallery-form')?.addEventListener('submit', function (e)
         return;
     }
 
-    if (action === 'delete' && !confirm(`Delete ${ticked} selected image(s)? This cannot be undone.`))
+    if (action === 'delete' && !confirm(`Delete ${ticked} selected item(s)? This cannot be undone.`))
     {
         e.preventDefault();
         return;
@@ -334,7 +334,6 @@ document.getElementById('gallery-form')?.addEventListener('submit', function (e)
         document.getElementById('apply-btn').textContent = 'Generating your download, please wait…';
     }
 });
-
 </script>
 
 <?php require_once __DIR__ . '/footer.php'; ?>

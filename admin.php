@@ -56,6 +56,7 @@ require_once __DIR__ . '/header.php';
 <h1>Admin Dashboard</h1>
 <p><a href="admin_users.php">View all users &rarr;</a></p>
 <p><a href="admin_storage.php">Disk usage by user &rarr;</a></p>
+<p><a href="admin_activity.php">Customer activity &rarr;</a></p>
 
 <h2>Overview</h2>
 <table>

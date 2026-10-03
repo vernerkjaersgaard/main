@@ -45,11 +45,15 @@ if (empty($candidate_files))
     exit;
 }
 
+// Now pulls file_kind/extension via tb_allowed_filetypes too — every
+// action below needs to know whether each ticked item is an image or a
+// foreign file, not just that it exists and is complete.
 $placeholders = implode(',', array_fill(0, count($candidate_files), '?'));
 $stmt = $pdo->prepare("
-    SELECT image_id, stored_filename, file_kind
-    FROM tb_images
-    WHERE collection_id = ? AND status = 'complete' AND stored_filename IN ($placeholders)
+    SELECT i.image_id, i.stored_filename, aft.file_kind, aft.extension
+    FROM tb_images i
+    JOIN tb_allowed_filetypes aft ON aft.filetype_id = i.filetype_id
+    WHERE i.collection_id = ? AND i.status = 'complete' AND i.stored_filename IN ($placeholders)
 ");
 $stmt->execute(array_merge([$collection_id], $candidate_files));
 $valid_images = $stmt->fetchAll();
@@ -63,13 +67,8 @@ if (empty($valid_images))
 $safe_files = array_column($valid_images, 'stored_filename');
 $image_ids = array_column($valid_images, 'image_id');
 
-// Lookup map so the download loop below knows, per filename, whether it's
-// a real image (originals/, resizable) or a foreign file (files/, never
-// resized regardless of which download size was requested).
-$file_kind_by_name = array_column($valid_images, 'file_kind', 'stored_filename');
-
 // ---------------------------------------------------------------
-// TAG
+// TAG — unchanged, applies identically regardless of file_kind
 // ---------------------------------------------------------------
 if ($action === 'tag')
 {
@@ -86,14 +85,15 @@ if ($action === 'tag')
     $update = $pdo->prepare("UPDATE tb_images SET tag_color = ? WHERE image_id IN ($id_placeholders)");
     $update->execute(array_merge([$tag_color], $image_ids));
 
-    log_action($pdo, $_SESSION['user_id'], 'tag', $collection['project_id'], $collection_id, count($image_ids) . ' image(s) tagged ' . $tag_color);
+    log_action($pdo, $_SESSION['user_id'], 'tag', $collection['project_id'], $collection_id, count($image_ids) . ' item(s) tagged ' . $tag_color);
 
     header('Location: upload.php?collection_id=' . $collection_id . '&tagged=' . count($image_ids));
     exit;
 }
 
 // ---------------------------------------------------------------
-// DELETE
+// DELETE — now also cleans up files/ for foreign files, not just
+// originals/thumbs/medium
 // ---------------------------------------------------------------
 if ($action === 'delete')
 {
@@ -104,38 +104,27 @@ if ($action === 'delete')
 
     $deleted_count = 0;
 
-    foreach ($valid_images as $image_row)
+    foreach ($valid_images as $item)
     {
-        $filename = $image_row['stored_filename'];
+        $filename = $item['stored_filename'];
 
-        if ($image_row['file_kind'] === 'image')
+        if ($item['file_kind'] === 'image')
         {
-            $original_path = $originals_dir . '/' . $filename;
-            $thumb_path    = $thumbs_dir . '/' . $filename;
-            $medium_path   = $medium_dir . '/' . $filename;
-
-            if (is_file($original_path))
+            foreach ([$originals_dir, $thumbs_dir, $medium_dir] as $dir)
             {
-                unlink($original_path);
-            }
-
-            if (is_file($thumb_path))
-            {
-                unlink($thumb_path);
-            }
-
-            if (is_file($medium_path))
-            {
-                unlink($medium_path);
+                $path = $dir . '/' . $filename;
+                if (is_file($path))
+                {
+                    unlink($path);
+                }
             }
         }
         else
         {
-            $file_path = $files_dir . '/' . $filename;
-
-            if (is_file($file_path))
+            $path = $files_dir . '/' . $filename;
+            if (is_file($path))
             {
-                unlink($file_path);
+                unlink($path);
             }
         }
 
@@ -146,36 +135,30 @@ if ($action === 'delete')
     $delete = $pdo->prepare("DELETE FROM tb_images WHERE image_id IN ($id_placeholders)");
     $delete->execute($image_ids);
 
-    log_action($pdo, $_SESSION['user_id'], 'delete_images', $collection['project_id'], $collection_id, $deleted_count . ' image(s)/file(s) deleted');
+    log_action($pdo, $_SESSION['user_id'], 'delete_images', $collection['project_id'], $collection_id, $deleted_count . ' item(s) deleted');
 
     header('Location: upload.php?collection_id=' . $collection_id . '&deleted=' . $deleted_count);
     exit;
 }
 
 // ---------------------------------------------------------------
-// DOWNLOAD (full / medium / small — zip files, 70 images per zip)
+// DOWNLOAD (full / medium / small)
 // ---------------------------------------------------------------
 if (in_array($action, ['download_full', 'download_medium', 'download_small'], true))
 {
-    // Special case: exactly one file selected, and it's already a foreign
-    // ZIP — download it directly, unwrapped, rather than producing a
-    // pointless zip-of-one-zip. Applies regardless of which size tier was
-    // requested, since resizing has no meaning for a ZIP anyway.
-    if (count($valid_images) === 1)
-    {
-        $only_file = $valid_images[0];
-        $only_extension = strtolower(pathinfo($only_file['stored_filename'], PATHINFO_EXTENSION));
-
-        if ($only_file['file_kind'] === 'file' && $only_extension === 'zip')
-        {
-            log_action($pdo, $_SESSION['user_id'], $action, $collection['project_id'], $collection_id, '1 file (unwrapped zip)');
-
-            header('Location: file_download.php?collection_id=' . $collection_id . '&file=' . urlencode($only_file['stored_filename']));
-            exit;
-        }
-    }
-
     require_once __DIR__ . '/vendor/autoload.php';
+
+    // "Don't double-zip a lone zip": if the ENTIRE ticked selection is
+    // exactly one item, AND it's a foreign file with a .zip extension,
+    // skip zip generation entirely and hand off straight to the
+    // existing single-file download endpoint.
+    if (count($valid_images) === 1 && $valid_images[0]['file_kind'] === 'file' && $valid_images[0]['extension'] === 'zip')
+    {
+        log_action($pdo, $_SESSION['user_id'], 'download_file', $collection['project_id'], $collection_id, $valid_images[0]['stored_filename'] . ' (already a zip, served directly)');
+
+        header('Location: file_download.php?collection_id=' . $collection_id . '&file=' . urlencode($valid_images[0]['stored_filename']));
+        exit;
+    }
 
     $user_id = $_SESSION['user_id'];
     $user_temp_dir = TEMP_ZIP_PATH . '/' . $user_id;
@@ -187,7 +170,7 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
 
     $originals_dir = $collection['storage_path'] . '/originals';
     $files_dir     = $collection['storage_path'] . '/files';
-    $chunks = array_chunk($safe_files, 70);
+    $chunks = array_chunk($valid_images, 70);
     $tokens = [];
 
     foreach ($chunks as $chunk)
@@ -199,22 +182,33 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
         $zip = new ZipArchive();
         $zip->open($zip_path, ZipArchive::CREATE);
 
-        foreach ($chunk as $filename)
+        foreach ($chunk as $item)
         {
-            $kind = $file_kind_by_name[$filename] ?? 'image';
-            $source_path = ($kind === 'image')
-                ? $originals_dir . '/' . $filename
-                : $files_dir . '/' . $filename;
+            $filename = $item['stored_filename'];
+
+            // Foreign files are never resized — they're added as-is
+            // regardless of which size tier was requested, since
+            // "medium"/"small" has no meaning for a PSD or a ZIP.
+            if ($item['file_kind'] === 'file')
+            {
+                $source_path = $files_dir . '/' . $filename;
+
+                if (is_file($source_path))
+                {
+                    $zip->addFile($source_path, $filename);
+                }
+
+                continue;
+            }
+
+            $source_path = $originals_dir . '/' . $filename;
 
             if (!is_file($source_path))
             {
                 continue;
             }
 
-            // Foreign files are never resized, regardless of which size
-            // tier was requested — a PSD or ZIP has no meaningful
-            // "medium" version, so it's always included at full size.
-            if ($action === 'download_full' || $kind !== 'image')
+            if ($action === 'download_full')
             {
                 $zip->addFile($source_path, $filename);
             }
@@ -246,7 +240,7 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
 
     $token_list = implode(',', $tokens);
 
-    log_action($pdo, $_SESSION['user_id'], $action, $collection['project_id'], $collection_id, count($safe_files) . ' image(s)/file(s)');
+    log_action($pdo, $_SESSION['user_id'], $action, $collection['project_id'], $collection_id, count($valid_images) . ' item(s)');
 
     header('Location: download_results.php?collection_id=' . $collection_id . '&tokens=' . urlencode($token_list));
     exit;
