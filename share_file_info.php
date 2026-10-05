@@ -39,9 +39,10 @@ if ($safe_current === '' || $safe_current !== $current_file)
     exit('Invalid filename.');
 }
 
-// Handle adding a note. Same pattern as share_view.php — no session, so
+// Handle adding a note. Same pattern as share_view.php. No session, so
 // token/collection_id/file travel as hidden POST fields, and the author
-// is always labeled generically as "Customer".
+// is always labeled generically as "Customer". After saving, the redirect
+// goes back to the gallery grid, anchored at this file's tile.
 if ($_SERVER['REQUEST_METHOD'] === 'POST')
 {
     $note_text = trim($_POST['note_text'] ?? '');
@@ -74,7 +75,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         }
     }
 
-    header('Location: share_file_info.php?token=' . urlencode($token) . '&collection_id=' . $collection_id . '&file=' . urlencode($safe_current));
+    header('Location: share.php?token=' . urlencode($token) . '#f-' . $collection_id . '-' . $safe_current);
     exit;
 }
 
@@ -92,7 +93,7 @@ if (!$file_info)
     http_response_code(404);
     exit('File not found.');
 }
-
+/*
 function format_bytes($bytes)
 {
     if ($bytes == 0)
@@ -105,7 +106,7 @@ function format_bytes($bytes)
     $power = min($power, count($units) - 1);
 
     return round($bytes / (1024 ** $power), 2) . ' ' . $units[$power];
-}
+}*/
 ?>
 <!DOCTYPE html>
 <html>
@@ -120,7 +121,7 @@ function format_bytes($bytes)
 <body>
 <main class="container">
 
-<p><a href="share.php?token=<?= htmlspecialchars($token) ?>">&larr; Back to gallery</a></p>
+<p><a href="share.php?token=<?= htmlspecialchars($token) ?>#f-<?= $collection_id ?>-<?= htmlspecialchars($safe_current) ?>">&larr; Back to gallery</a></p>
 
 <div style="text-align:center;">
     <div class="filebadge" style="width:140px; margin:0 auto; aspect-ratio:1/1;">

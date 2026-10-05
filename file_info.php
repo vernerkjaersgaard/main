@@ -30,7 +30,9 @@ if ($safe_current === '' || $safe_current !== $current_file)
     exit('Invalid filename.');
 }
 
-// Handle adding a note. Same POST-Redirect-GET pattern as view.php.
+// Handle adding a note. Same POST-Redirect-GET pattern as view.php. After
+// saving, the redirect goes back to the gallery grid, anchored at this
+// file's tile, instead of reloading this page.
 if ($_SERVER['REQUEST_METHOD'] === 'POST')
 {
     $note_text = trim($_POST['note_text'] ?? '');
@@ -63,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         }
     }
 
-    header('Location: file_info.php?collection_id=' . $collection_id . '&file=' . urlencode($safe_current));
+    header('Location: upload.php?collection_id=' . $collection_id . '#f-' . $collection_id . '-' . $safe_current);
     exit;
 }
 
@@ -81,7 +83,7 @@ if (!$file_info)
     http_response_code(404);
     exit('File not found.');
 }
-
+/*
 function format_bytes($bytes)
 {
     if ($bytes == 0)
@@ -94,12 +96,12 @@ function format_bytes($bytes)
     $power = min($power, count($units) - 1);
 
     return round($bytes / (1024 ** $power), 2) . ' ' . $units[$power];
-}
+}*/
 
 require_once __DIR__ . '/header.php';
 ?>
 
-<p><a href="upload.php?collection_id=<?= $collection_id ?>">&larr; Back to <?= htmlspecialchars($collection['collection_name']) ?></a></p>
+<p><a href="upload.php?collection_id=<?= $collection_id ?>#f-<?= $collection_id ?>-<?= htmlspecialchars($safe_current) ?>">&larr; Back to <?= htmlspecialchars($collection['collection_name']) ?></a></p>
 
 <div style="text-align:center;">
     <div class="filebadge" style="width:140px; margin:0 auto; aspect-ratio:1/1;">

@@ -31,7 +31,9 @@ if ($safe_current === '' || $safe_current !== $current_file)
 }
 
 // Handle adding a note. POST-Redirect-GET pattern: after saving, redirect
-// back to this same image so refreshing the page never re-submits the note.
+// so refreshing the page never re-submits the note. The redirect now goes
+// back to the gallery grid, anchored at this image's tile, instead of
+// reloading the viewer.
 if ($_SERVER['REQUEST_METHOD'] === 'POST')
 {
     $note_text = trim($_POST['note_text'] ?? '');
@@ -64,15 +66,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         }
     }
 
-    header('Location: view.php?collection_id=' . $collection_id . '&file=' . urlencode($safe_current));
+    header('Location: upload.php?collection_id=' . $collection_id . '#f-' . $collection_id . '-' . $safe_current);
     exit;
 }
 
+// Prev/next navigation only walks through viewable images, skipping
+// foreign files (PSD, ZIP, etc.). file_kind comes from tb_allowed_filetypes
+// via the filetype_id foreign key, not from a column on tb_images.
 $stmt = $pdo->prepare("
-    SELECT stored_filename
-    FROM tb_images
-    WHERE collection_id = ? AND status = 'complete' AND file_kind = 'image'
-    ORDER BY original_filename
+    SELECT i.stored_filename
+    FROM tb_images i
+    JOIN tb_allowed_filetypes aft ON aft.filetype_id = i.filetype_id
+    WHERE i.collection_id = ? AND i.status = 'complete' AND aft.file_kind = 'image'
+    ORDER BY i.original_filename
 ");
 $stmt->execute([$collection_id]);
 $images = $stmt->fetchAll(PDO::FETCH_COLUMN);
@@ -95,7 +101,7 @@ $current_notes = $stmt->fetchColumn();
 require_once __DIR__ . '/header.php';
 ?>
 
-<p><a href="upload.php?collection_id=<?= $collection_id ?>">&larr; Back to <?= htmlspecialchars($collection['collection_name']) ?></a></p>
+<p><a href="upload.php?collection_id=<?= $collection_id ?>#f-<?= $collection_id ?>-<?= htmlspecialchars($safe_current) ?>">&larr; Back to <?= htmlspecialchars($collection['collection_name']) ?></a></p>
 
 <p>Image <?= $current_index + 1 ?> of <?= count($images) ?></p>
 

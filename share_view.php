@@ -39,10 +39,10 @@ if ($safe_current === '' || $safe_current !== $current_file)
     exit('Invalid filename.');
 }
 
-// Handle adding a note. Same POST-Redirect-GET pattern as view.php, so
-// refreshing the page never re-submits the note. No session here — the
-// customer is always labeled generically, since the token doesn't
-// distinguish between different people who might share the same link.
+// Handle adding a note. POST-Redirect-GET pattern, so refreshing the page
+// never re-submits the note. No session here, so the customer is always
+// labeled generically. After saving, the redirect goes back to the gallery
+// grid, anchored at this image's tile, instead of reloading the viewer.
 if ($_SERVER['REQUEST_METHOD'] === 'POST')
 {
     $note_text = trim($_POST['note_text'] ?? '');
@@ -75,15 +75,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         }
     }
 
-    header('Location: share_view.php?token=' . urlencode($token) . '&collection_id=' . $collection_id . '&file=' . urlencode($safe_current));
+    header('Location: share.php?token=' . urlencode($token) . '#f-' . $collection_id . '-' . $safe_current);
     exit;
 }
 
+// Prev/next only walks through viewable images, skipping foreign files
+// (PSD, ZIP, etc.). file_kind lives in tb_allowed_filetypes, reached via
+// the filetype_id foreign key, not on tb_images itself.
 $stmt = $pdo->prepare("
-    SELECT stored_filename
-    FROM tb_images
-    WHERE collection_id = ? AND status = 'complete' AND file_kind = 'image'
-    ORDER BY original_filename
+    SELECT i.stored_filename
+    FROM tb_images i
+    JOIN tb_allowed_filetypes aft ON aft.filetype_id = i.filetype_id
+    WHERE i.collection_id = ? AND i.status = 'complete' AND aft.file_kind = 'image'
+    ORDER BY i.original_filename
 ");
 $stmt->execute([$collection_id]);
 $images = $stmt->fetchAll(PDO::FETCH_COLUMN);
@@ -116,7 +120,7 @@ $current_notes = $stmt->fetchColumn();
 <body>
 <main class="container">
 
-<p><a href="share.php?token=<?= htmlspecialchars($token) ?>">&larr; Back to gallery</a></p>
+<p><a href="share.php?token=<?= htmlspecialchars($token) ?>#f-<?= $collection_id ?>-<?= htmlspecialchars($safe_current) ?>">&larr; Back to gallery</a></p>
 
 <p>Image <?= $current_index + 1 ?> of <?= count($images) ?></p>
 

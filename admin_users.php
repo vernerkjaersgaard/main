@@ -109,7 +109,7 @@ $users = $pdo->query("
     GROUP BY u.user_id, u.username, u.email, u.is_admin, u.date_of_creation
     ORDER BY u.date_of_creation DESC
 ")->fetchAll();
-
+/*
 function format_bytes($bytes)
 {
     if ($bytes == 0)
@@ -122,7 +122,7 @@ function format_bytes($bytes)
     $power = min($power, count($units) - 1);
 
     return round($bytes / (1024 ** $power), 2) . ' ' . $units[$power];
-}
+}*/
 
 require_once __DIR__ . '/header.php';
 ?>

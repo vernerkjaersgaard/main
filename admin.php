@@ -1,7 +1,7 @@
 <?php
 // admin.php
 require_once __DIR__ . '/admin_check.php';
-
+/*
 function format_bytes($bytes)
 {
     if ($bytes === null || $bytes == 0)
@@ -14,7 +14,7 @@ function format_bytes($bytes)
     $power = min($power, count($units) - 1);
 
     return round($bytes / (1024 ** $power), 2) . ' ' . $units[$power];
-}
+}*/
 
 $total_users = $pdo->query("SELECT COUNT(*) FROM tb_users")->fetchColumn();
 $total_projects = $pdo->query("SELECT COUNT(*) FROM tb_projects")->fetchColumn();

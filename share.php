@@ -104,9 +104,15 @@ $collections = $stmt->fetchAll();
         $images = $stmt->fetchAll();
 
         $tag_counts = ['red' => 0, 'green' => 0, 'blue' => 0, 'yellow' => 0, 'purple' => 0, 'none' => 0];
+        $note_count = 0;
         foreach ($images as $image)
         {
             $tag_counts[$image['tag_color']]++;
+
+            if (!empty($image['notes']))
+            {
+                $note_count++;
+            }
         }
         ?>
 
@@ -114,15 +120,24 @@ $collections = $stmt->fetchAll();
             <p><em>No images in this collection yet.</em></p>
         <?php else: ?>
 
+            <div class="collection-block">
+
             <div class="tag-summary">
+                <span class="tag-filter-label">Filter:</span>
                 <?php foreach ($tag_counts as $color => $count): ?>
                     <?php if ($count > 0): ?>
-                        <span class="tag-summary-item">
+                        <a href="#" class="tag-summary-item tag-filter" data-filter="<?= $color ?>">
                             <span class="tag-swatch tag-<?= $color ?>"></span>
                             <?= $count ?> <?= $color === 'none' ? 'untagged' : ucfirst($color) ?>
-                        </span>
+                        </a>
                     <?php endif; ?>
                 <?php endforeach; ?>
+                <?php if ($note_count > 0): ?>
+                    <a href="#" class="tag-summary-item tag-filter" data-filter="notes">
+                        &#9998; <?= $note_count ?> with notes
+                    </a>
+                <?php endif; ?>
+                <a href="#" class="tag-summary-item tag-filter" data-filter="all">Show all</a>
             </div>
             <p><a href="share_image_list.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection['collection_id'] ?>">Generate copyable image list</a></p>
 
@@ -159,7 +174,7 @@ $collections = $stmt->fetchAll();
 
                 <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:1rem; margin-bottom:2rem;">
                     <?php foreach ($images as $image): ?>
-                        <div style="position:relative;">
+                        <div style="position:relative;" id="f-<?= $collection['collection_id'] ?>-<?= htmlspecialchars($image['stored_filename']) ?>" data-tag="<?= $image['tag_color'] ?>" data-note="<?= !empty($image['notes']) ? '1' : '0' ?>">
                             <input type="checkbox" name="ticked[]" value="<?= htmlspecialchars($image['stored_filename']) ?>"
                             class="thumb-checkbox<?= $image['tag_color'] !== 'none' ? ' tag-' . $image['tag_color'] : '' ?>"
                             style="position:absolute; top:8px; left:8px; width:20px; height:20px; z-index:1;">
@@ -184,17 +199,84 @@ $collections = $stmt->fetchAll();
                 </div>
             </form>
 
+            </div>
+
         <?php endif; ?>
     <?php endforeach; ?>
 
 <?php endif; ?>
 
 <script>
+// Select all ticks only the tiles currently visible, so a hidden
+// (filtered-out) tile can never be ticked and swept into an action.
 document.querySelectorAll('.select-all-cb').forEach(function (selectAllBox)
 {
     selectAllBox.addEventListener('change', function ()
     {
-        this.closest('.tag-form').querySelectorAll('.thumb-checkbox').forEach(cb => cb.checked = this.checked);
+        this.closest('.tag-form').querySelectorAll('[data-tag]').forEach(function (tile)
+        {
+            if (tile.style.display !== 'none')
+            {
+                tile.querySelector('.thumb-checkbox').checked = selectAllBox.checked;
+            }
+        });
+    });
+});
+
+// Filter: click a colour, or "with notes", in the summary line to show
+// only matching tiles; click it again, or "Show all", to clear. Only one
+// filter is active at a time. Hidden tiles are unticked so they can't be
+// submitted with the form.
+document.querySelectorAll('.tag-filter').forEach(function (link)
+{
+    link.addEventListener('click', function (e)
+    {
+        e.preventDefault();
+
+        const block = this.closest('.collection-block');
+        let filter = this.dataset.filter;
+
+        if (this.classList.contains('active'))
+        {
+            filter = 'all';
+        }
+
+        block.querySelectorAll('.tag-filter').forEach(function (l)
+        {
+            l.classList.toggle('active', filter !== 'all' && l.dataset.filter === filter);
+        });
+
+        block.querySelectorAll('[data-tag]').forEach(function (tile)
+        {
+            let show;
+
+            if (filter === 'all')
+            {
+                show = true;
+            }
+            else if (filter === 'notes')
+            {
+                show = (tile.dataset.note === '1');
+            }
+            else
+            {
+                show = (tile.dataset.tag === filter);
+            }
+
+            tile.style.display = show ? '' : 'none';
+
+            if (!show)
+            {
+                tile.querySelector('.thumb-checkbox').checked = false;
+            }
+        });
+
+        const selectAll = block.querySelector('.select-all-cb');
+
+        if (selectAll)
+        {
+            selectAll.checked = false;
+        }
     });
 });
 

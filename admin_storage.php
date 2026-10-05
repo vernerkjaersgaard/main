@@ -33,7 +33,7 @@ function get_directory_size($dir)
 
     return $size;
 }
-
+/*
 function format_bytes($bytes)
 {
     if ($bytes == 0)
@@ -46,7 +46,7 @@ function format_bytes($bytes)
     $power = min($power, count($units) - 1);
 
     return round($bytes / (1024 ** $power), 2) . ' ' . $units[$power];
-}
+}*/
 
 // Get every user, and every project_id they own — a user's total disk
 // usage is the sum of their individual project folders on disk, which

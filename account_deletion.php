@@ -1,36 +1,9 @@
 <?php
 // account_deletion.php
 
-function delete_directory_recursive($dir)
-{
-    if (!is_dir($dir))
-    {
-        return;
-    }
+require_once dirname(__DIR__) . '/general_functions.php';
 
-    $items = scandir($dir);
 
-    foreach ($items as $item)
-    {
-        if ($item === '.' || $item === '..')
-        {
-            continue;
-        }
-
-        $path = $dir . '/' . $item;
-
-        if (is_dir($path))
-        {
-            delete_directory_recursive($path);
-        }
-        else
-        {
-            unlink($path);
-        }
-    }
-
-    rmdir($dir);
-}
 
 function delete_user_account($pdo, $user_id)
 {

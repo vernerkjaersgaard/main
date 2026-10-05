@@ -6,7 +6,16 @@ if (session_status() === PHP_SESSION_NONE)
 }
 
 require_once __DIR__ . '/db.php';
+require_once dirname(__DIR__) . '/general_functions.php';
+
 ?>
+
+
+<?php
+$on_admin_page = (strpos(basename($_SERVER['SCRIPT_NAME']), 'admin') === 0);
+?>
+
+
 <!DOCTYPE html>
 <html>
 <head>
@@ -17,30 +26,14 @@ require_once __DIR__ . '/db.php';
 <link rel="stylesheet" href="style.css?v=<?= filemtime(__DIR__ . '/style.css') ?>">
 </head>
 <body>
-<nav class="container-fluid site-header">
+<nav class="container-fluid site-header<?= $on_admin_page ? ' site-header-admin' : '' ?>">
 <ul>
-<li><strong>Pics.zorum.dk</strong></li>
+<li><a href="index.php"><strong>Pics.zorum.dk</strong></a><?php if ($on_admin_page): ?> <span class="admin-badge">ADMIN</span><?php endif; ?></li>
 </ul>
 <ul>
 <?php if (isset($_SESSION['user_id'])): ?>
 
     <?php
-    if (!function_exists('format_bytes'))
-    {
-        function format_bytes($bytes)
-        {
-            if ($bytes == 0)
-            {
-                return '0 B';
-            }
-
-            $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-            $power = floor(log($bytes, 1024));
-            $power = min($power, count($units) - 1);
-
-            return round($bytes / (1024 ** $power), 2) . ' ' . $units[$power];
-        }
-    }
 
     $online_count = $pdo->query("
         SELECT COUNT(*) FROM tb_users
