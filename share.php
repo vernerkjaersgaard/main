@@ -35,7 +35,7 @@ $update->execute([$share['share_id']]);
 
 log_action($pdo, null, 'share_view', $share['project_id'], null, null);
 
-$stmt = $pdo->prepare("SELECT collection_id, collection_name FROM tb_collections WHERE project_id = ? ORDER BY date_of_creation");
+$stmt = $pdo->prepare("SELECT collection_id, collection_name FROM tb_collections WHERE project_id = ? ORDER BY date_of_creation DESC, collection_id DESC");
 $stmt->execute([$share['project_id']]);
 $collections = $stmt->fetchAll();
 ?>
