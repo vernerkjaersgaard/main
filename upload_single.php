@@ -87,6 +87,9 @@ $max_file_size = 80 * 1024 * 1024; // 80 MB, applies to both images and foreign 
 
 $file = $_FILES['image'];
 $original_name = $file['name'];
+// Browsers encode " as %22 (and line breaks as %0D / %0A) inside the
+// multipart filename, and PHP leaves it encoded. Undo exactly those three.
+$original_name = str_replace(['%22', '%0D', '%0A'], ['"', '', ''], $original_name);
 
 function respond_error($original_name, $message)
 {

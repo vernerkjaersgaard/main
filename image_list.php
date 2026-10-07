@@ -24,7 +24,7 @@ if (!$collection)
 }
 
 $stmt = $pdo->prepare("
-    SELECT original_filename, tag_color
+    SELECT original_filename, tag_color, notes
     FROM tb_images
     WHERE collection_id = ? AND status = 'complete'
     ORDER BY original_filename
@@ -34,10 +34,20 @@ $images = $stmt->fetchAll();
 
 // Group by tag color, in a fixed meaningful order — 'none' (untagged) last,
 // since it's the "everything else" bucket rather than a real tag choice.
+// Images with notes are also collected into a separate list, shown as an
+// extra section at the end; they stay in their colour group too.
 $groups = ['red' => [], 'green' => [], 'blue' => [], 'yellow' => [], 'purple' => [], 'none' => []];
+$with_notes = [];
+
 foreach ($images as $image)
 {
     $groups[$image['tag_color']][] = $image['original_filename'];
+
+    if (!empty($image['notes']))
+    {
+        $label = ($image['tag_color'] === 'none') ? 'untagged' : $image['tag_color'];
+        $with_notes[] = $image['original_filename'] . ' [' . $label . ']';
+    }
 }
 
 $group_labels = [
@@ -63,6 +73,18 @@ foreach ($groups as $color => $filenames)
     {
         $lines[] = $filename;
     }
+    $lines[] = '';
+}
+
+if (!empty($with_notes))
+{
+    $lines[] = 'WITH NOTES (' . count($with_notes) . ', also listed above)';
+
+    foreach ($with_notes as $entry)
+    {
+        $lines[] = $entry;
+    }
+
     $lines[] = '';
 }
 

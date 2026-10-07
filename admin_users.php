@@ -149,7 +149,7 @@ require_once __DIR__ . '/header.php';
     <p style="color:red;">User not found.</p>
 <?php endif; ?>
 
-<table>
+<table class="zebra">
     <thead>
         <tr>
             <th>Username</th>

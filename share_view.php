@@ -13,11 +13,15 @@ if (!preg_match('/^[a-f0-9]{64}$/', $token))
     exit('Not found.');
 }
 
+// The last condition limits a collection-level link to its own collection.
+// A project-level link has sl.collection_id = NULL and matches every
+// collection in its project, as before.
 $stmt = $pdo->prepare("
     SELECT sl.ttl_days, sl.created_at, c.collection_name, sl.project_id
     FROM tb_share_links sl
     JOIN tb_collections c ON c.project_id = sl.project_id
     WHERE sl.token = ? AND sl.revoked_at IS NULL AND c.collection_id = ?
+      AND (sl.collection_id IS NULL OR sl.collection_id = c.collection_id)
 ");
 $stmt->execute([$token, $collection_id]);
 $result = $stmt->fetch();

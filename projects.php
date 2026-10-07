@@ -95,7 +95,7 @@ Storage used: <?= format_bytes($my_usage_bytes) ?>
 
 <?php else: ?>
 
-<table>
+<table class="zebra">
 <thead>
 <tr>
 <th><?= sort_link('Project Name', 'name', $sort, $dir) ?></th>

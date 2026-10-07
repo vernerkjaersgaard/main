@@ -13,11 +13,15 @@ if (!preg_match('/^[a-f0-9]{64}$/', $token))
     exit('Not found.');
 }
 
+// The last condition limits a collection-level link to its own collection.
+// A project-level link has sl.collection_id = NULL and matches every
+// collection in its project, as before.
 $stmt = $pdo->prepare("
     SELECT sl.ttl_days, sl.created_at, c.collection_name, sl.project_id
     FROM tb_share_links sl
     JOIN tb_collections c ON c.project_id = sl.project_id
     WHERE sl.token = ? AND sl.revoked_at IS NULL AND c.collection_id = ?
+      AND (sl.collection_id IS NULL OR sl.collection_id = c.collection_id)
 ");
 $stmt->execute([$token, $collection_id]);
 $result = $stmt->fetch();
@@ -93,20 +97,7 @@ if (!$file_info)
     http_response_code(404);
     exit('File not found.');
 }
-/*
-function format_bytes($bytes)
-{
-    if ($bytes == 0)
-    {
-        return '0 B';
-    }
 
-    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    $power = floor(log($bytes, 1024));
-    $power = min($power, count($units) - 1);
-
-    return round($bytes / (1024 ** $power), 2) . ' ' . $units[$power];
-}*/
 ?>
 <!DOCTYPE html>
 <html>

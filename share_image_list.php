@@ -11,11 +11,15 @@ if (!preg_match('/^[a-f0-9]{64}$/', $token))
     exit('Not found.');
 }
 
+// The last condition limits a collection-level link to its own collection.
+// A project-level link has sl.collection_id = NULL and matches every
+// collection in its project, as before.
 $stmt = $pdo->prepare("
     SELECT sl.ttl_days, sl.created_at, c.collection_name
     FROM tb_share_links sl
     JOIN tb_collections c ON c.project_id = sl.project_id
     WHERE sl.token = ? AND sl.revoked_at IS NULL AND c.collection_id = ?
+      AND (sl.collection_id IS NULL OR sl.collection_id = c.collection_id)
 ");
 $stmt->execute([$token, $collection_id]);
 $result = $stmt->fetch();
@@ -30,7 +34,7 @@ if (!$result || $is_expired)
 }
 
 $stmt = $pdo->prepare("
-    SELECT original_filename, tag_color
+    SELECT original_filename, tag_color, notes
     FROM tb_images
     WHERE collection_id = ? AND status = 'complete'
     ORDER BY original_filename
@@ -39,9 +43,17 @@ $stmt->execute([$collection_id]);
 $images = $stmt->fetchAll();
 
 $groups = ['red' => [], 'green' => [], 'blue' => [], 'yellow' => [], 'purple' => [], 'none' => []];
+$with_notes = [];
+
 foreach ($images as $image)
 {
     $groups[$image['tag_color']][] = $image['original_filename'];
+
+    if (!empty($image['notes']))
+    {
+        $label = ($image['tag_color'] === 'none') ? 'untagged' : $image['tag_color'];
+        $with_notes[] = $image['original_filename'] . ' [' . $label . ']';
+    }
 }
 
 $group_labels = [
@@ -66,6 +78,18 @@ foreach ($groups as $color => $filenames)
     {
         $lines[] = $filename;
     }
+    $lines[] = '';
+}
+
+if (!empty($with_notes))
+{
+    $lines[] = 'WITH NOTES (' . count($with_notes) . ', also listed above)';
+
+    foreach ($with_notes as $entry)
+    {
+        $lines[] = $entry;
+    }
+
     $lines[] = '';
 }
 

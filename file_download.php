@@ -61,7 +61,7 @@ log_action($pdo, $_SESSION['user_id'], 'download_file', $collection['project_id'
 $mime_type = mime_content_type($path) ?: 'application/octet-stream';
 
 header('Content-Type: ' . $mime_type);
-header('Content-Disposition: attachment; filename="' . $image_row['original_filename'] . '"');
+header('Content-Disposition: ' . content_disposition_attachment($image_row['original_filename']));
 header('Content-Length: ' . filesize($path));
 
 readfile($path);

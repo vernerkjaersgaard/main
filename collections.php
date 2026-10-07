@@ -1,4 +1,5 @@
 <?php
+// collections.php
 require_once __DIR__ . '/auth_check.php';
 require_once __DIR__ . '/db.php';
 
@@ -12,10 +13,10 @@ $project = $stmt->fetch();
 if (!$project)
 {
     http_response_code(404);
-require_once __DIR__ . '/header.php';
+    require_once __DIR__ . '/header.php';
     echo '<p>Project not found.</p>';
-require_once __DIR__ . '/footer.php';
-exit;
+    require_once __DIR__ . '/footer.php';
+    exit;
 }
 
 // Whitelist of allowed sort options, mapped to their actual ORDER BY clause.
@@ -61,23 +62,24 @@ require_once __DIR__ . '/header.php';
 <?php else: ?>
 
 <form method="get" style="margin-bottom:1rem;">
-    <input type="hidden" name="project_id" value="<?= $project_id ?>">
-    <label style="display:inline-flex; align-items:center; gap:0.5rem; width:auto;">
+<input type="hidden" name="project_id" value="<?= $project_id ?>">
+<label style="display:inline-flex; align-items:center; gap:0.5rem; width:auto;">
         Sort by:
-        <select name="sort" onchange="this.form.submit()">
-            <option value="newest" <?= $sort === 'newest' ? 'selected' : '' ?>>Newest first</option>
-            <option value="oldest" <?= $sort === 'oldest' ? 'selected' : '' ?>>Oldest first</option>
-            <option value="name_az" <?= $sort === 'name_az' ? 'selected' : '' ?>>Name (A&ndash;Z)</option>
-            <option value="name_za" <?= $sort === 'name_za' ? 'selected' : '' ?>>Name (Z&ndash;A)</option>
-        </select>
-    </label>
+<select name="sort" onchange="this.form.submit()">
+<option value="newest" <?= $sort === 'newest' ? 'selected' : '' ?>>Newest first</option>
+<option value="oldest" <?= $sort === 'oldest' ? 'selected' : '' ?>>Oldest first</option>
+<option value="name_az" <?= $sort === 'name_az' ? 'selected' : '' ?>>Name (A&ndash;Z)</option>
+<option value="name_za" <?= $sort === 'name_za' ? 'selected' : '' ?>>Name (Z&ndash;A)</option>
+</select>
+</label>
 </form>
 
-<table>
+<table class="zebra">
 <thead>
 <tr>
 <th>Collection Name</th>
 <th>Created</th>
+<th></th>
 <th></th>
 <th></th>
 </tr>
@@ -89,6 +91,9 @@ require_once __DIR__ . '/header.php';
 <td><?= htmlspecialchars($collection['date_of_creation']) ?></td>
 <td>
 <a href="rename_collection.php?collection_id=<?= (int)$collection['collection_id'] ?>" role="button" class="secondary">Rename</a>
+</td>
+<td>
+<a href="share_manage.php?project_id=<?= $project_id ?>&collection_id=<?= (int)$collection['collection_id'] ?>" role="button" class="secondary">Share</a>
 </td>
 <td>
 <form method="post" action="delete_collection.php" onsubmit="return confirm('Delete the collection &quot;<?= htmlspecialchars($collection['collection_name'], ENT_QUOTES) ?>&quot; and all its images? This cannot be undone.');" style="display:inline;">

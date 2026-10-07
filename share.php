@@ -11,11 +11,17 @@ if (!preg_match('/^[a-f0-9]{64}$/', $token))
     exit('Link not found.');
 }
 
+// scope_collection_id is NULL for a whole-project link, or the one
+// collection a collection-level link is limited to.
 $stmt = $pdo->prepare("
-    SELECT sl.share_id, sl.ttl_days, sl.created_at, p.project_id, p.project_name, u.email AS photographer_email
+    SELECT sl.share_id, sl.ttl_days, sl.created_at,
+           sl.collection_id AS scope_collection_id,
+           sc.collection_name AS scope_collection_name,
+           p.project_id, p.project_name, u.email AS photographer_email
     FROM tb_share_links sl
     JOIN tb_projects p ON p.project_id = sl.project_id
     JOIN tb_users u ON u.user_id = p.user_id
+    LEFT JOIN tb_collections sc ON sc.collection_id = sl.collection_id
     WHERE sl.token = ? AND sl.revoked_at IS NULL
 ");
 $stmt->execute([$token]);
@@ -30,13 +36,28 @@ if (!$share || $is_expired)
     exit('This link is invalid or has expired.');
 }
 
+$is_scoped = ($share['scope_collection_id'] !== null);
+
+// On a collection link the page is headed by the collection name, and
+// the project name is not shown to the customer at all.
+$page_heading = $is_scoped ? $share['scope_collection_name'] : $share['project_name'];
+
 $update = $pdo->prepare("UPDATE tb_share_links SET view_count = view_count + 1, last_accessed = NOW() WHERE share_id = ?");
 $update->execute([$share['share_id']]);
 
-log_action($pdo, null, 'share_view', $share['project_id'], null, null);
+log_action($pdo, null, 'share_view', $share['project_id'], $is_scoped ? (int)$share['scope_collection_id'] : null, null);
 
-$stmt = $pdo->prepare("SELECT collection_id, collection_name FROM tb_collections WHERE project_id = ? ORDER BY date_of_creation DESC, collection_id DESC");
-$stmt->execute([$share['project_id']]);
+if ($is_scoped)
+{
+    $stmt = $pdo->prepare("SELECT collection_id, collection_name FROM tb_collections WHERE project_id = ? AND collection_id = ?");
+    $stmt->execute([$share['project_id'], $share['scope_collection_id']]);
+}
+else
+{
+    $stmt = $pdo->prepare("SELECT collection_id, collection_name FROM tb_collections WHERE project_id = ? ORDER BY date_of_creation DESC, collection_id DESC");
+    $stmt->execute([$share['project_id']]);
+}
+
 $collections = $stmt->fetchAll();
 ?>
 <!DOCTYPE html>
@@ -45,14 +66,14 @@ $collections = $stmt->fetchAll();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title><?= htmlspecialchars($share['project_name']) ?> &mdash; Gallery</title>
+    <title><?= htmlspecialchars($page_heading) ?> &mdash; Gallery</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <link rel="stylesheet" href="style.css?v=<?= filemtime(__DIR__ . '/style.css') ?>">
 </head>
 <body>
 <main class="container">
 
-<h1><?= htmlspecialchars($share['project_name']) ?></h1>
+<h1><?= htmlspecialchars($page_heading) ?></h1>
 
 <p><a href="mailto:<?= htmlspecialchars($share['photographer_email']) ?>">Email the photographer</a></p>
 
@@ -85,12 +106,14 @@ $collections = $stmt->fetchAll();
 
 <?php if (empty($collections)): ?>
 
-    <p>No images have been added to this project yet.</p>
+    <p>No images have been added to this <?= $is_scoped ? 'collection' : 'project' ?> yet.</p>
 
 <?php else: ?>
 
     <?php foreach ($collections as $collection): ?>
-        <h2 id="collection-<?= $collection['collection_id'] ?>"><?= htmlspecialchars($collection['collection_name']) ?></h2>
+        <?php if (!$is_scoped): ?>
+            <h2 id="collection-<?= $collection['collection_id'] ?>"><?= htmlspecialchars($collection['collection_name']) ?></h2>
+        <?php endif; ?>
 
         <?php
         $stmt = $pdo->prepare("

@@ -322,3 +322,18 @@ a.tag-filter.active
     border-radius: 4px;
     margin-left: 0.75rem;
 }
+
+table.zebra tbody tr:nth-child(odd) td
+{
+    background-color: rgba(255, 255, 255, 0.55);
+}
+
+table.zebra tbody tr:nth-child(even) td
+{
+    background-color: rgba(1, 57, 80, 0.08);
+}
+
+table.zebra tbody tr:hover td
+{
+    background-color: rgba(122, 201, 208, 0.35);
+}

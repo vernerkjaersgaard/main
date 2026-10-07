@@ -22,6 +22,7 @@ $stmt = $pdo->prepare("
     FROM tb_share_links sl
     JOIN tb_collections c ON c.project_id = sl.project_id
     WHERE sl.token = ? AND sl.revoked_at IS NULL AND c.collection_id = ?
+    AND (sl.collection_id IS NULL OR sl.collection_id = c.collection_id)
 ");
 $stmt->execute([$token, $collection_id]);
 $result = $stmt->fetch();
