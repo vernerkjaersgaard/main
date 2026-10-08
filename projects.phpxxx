@@ -69,13 +69,9 @@ $stmt = $pdo->prepare("
 $stmt->execute([$_SESSION['user_id']]);
 $my_usage_bytes = $stmt->fetchColumn();
 
-// The storage cap, and whether the administrator has switched branding on
-// for this account (which decides if the Branding button is shown).
-$stmt = $pdo->prepare("SELECT storage_cap_mb, branding_enabled FROM tb_users WHERE user_id = ?");
+$stmt = $pdo->prepare("SELECT storage_cap_mb FROM tb_users WHERE user_id = ?");
 $stmt->execute([$_SESSION['user_id']]);
-$me = $stmt->fetch();
-$my_cap_mb = $me['storage_cap_mb'];
-$branding_on = !empty($me['branding_enabled']);
+$my_cap_mb = $stmt->fetchColumn();
 ?>
 
 <h1>Projects</h1>
@@ -91,12 +87,7 @@ Storage used: <?= format_bytes($my_usage_bytes) ?>
 <p style="color:green;">Project deleted.</p>
 <?php endif; ?>
 
-<p>
-<a href="create_project.php" role="button">+ New Project</a>
-<?php if ($branding_on): ?>
-<a href="branding.php" role="button" class="secondary">Branding</a>
-<?php endif; ?>
-</p>
+<p><a href="create_project.php" role="button">+ New Project</a></p>
 
 <?php if (empty($projects)): ?>
 

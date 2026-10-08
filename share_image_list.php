@@ -13,9 +13,10 @@ if (!preg_match('/^[a-f0-9]{64}$/', $token))
 
 // The last condition limits a collection-level link to its own collection.
 // A project-level link has sl.collection_id = NULL and matches every
-// collection in its project, as before.
+// collection in its project, as before. sl.project_id is fetched so the
+// branding block below knows whose branding to load.
 $stmt = $pdo->prepare("
-    SELECT sl.ttl_days, sl.created_at, c.collection_name
+    SELECT sl.ttl_days, sl.created_at, sl.project_id, c.collection_name
     FROM tb_share_links sl
     JOIN tb_collections c ON c.project_id = sl.project_id
     WHERE sl.token = ? AND sl.revoked_at IS NULL AND c.collection_id = ?
@@ -94,6 +95,23 @@ if (!empty($with_notes))
 }
 
 $output_text = rtrim(implode("\n", $lines));
+
+// Branding: the account owner's colours and header band. Every value
+// defaults to "no branding", so if the helper file is missing, or branding
+// is off for this account, the page looks as it always has.
+$brand_style  = '';
+$brand_header = '';
+
+$branding_file = dirname(__DIR__) . '/branding_functions.php';
+
+if (is_file($branding_file))
+{
+    require_once $branding_file;
+
+    $brand        = get_branding($pdo, $result['project_id']);
+    $brand_style  = branding_style_block($brand);
+    $brand_header = branding_header_html($brand, $token);
+}
 ?>
 <!DOCTYPE html>
 <html>
@@ -104,8 +122,10 @@ $output_text = rtrim(implode("\n", $lines));
     <title>Image List &mdash; <?= htmlspecialchars($result['collection_name']) ?></title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <link rel="stylesheet" href="style.css?v=<?= filemtime(__DIR__ . '/style.css') ?>">
+<?= $brand_style ?>
 </head>
 <body>
+<?= $brand_header ?>
 <main class="container">
 
 <p><a href="share.php?token=<?= htmlspecialchars($token) ?>">&larr; Back to gallery</a></p>

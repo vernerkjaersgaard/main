@@ -59,6 +59,27 @@ else
 }
 
 $collections = $stmt->fetchAll();
+
+// Branding: the account owner's logo, colours, welcome text and contact
+// address. Every value defaults to "no branding", so if the helper file is
+// missing, or branding is off for this account, the page looks as it always has.
+$brand_style   = '';
+$brand_header  = '';
+$brand_welcome = '';
+$contact_email = $share['photographer_email'];
+
+$branding_file = dirname(__DIR__) . '/branding_functions.php';
+
+if (is_file($branding_file))
+{
+    require_once $branding_file;
+
+    $brand         = get_branding($pdo, $share['project_id']);
+    $brand_style   = branding_style_block($brand);
+    $brand_header  = branding_header_html($brand, $token);
+    $brand_welcome = branding_welcome_html($brand);
+    $contact_email = branding_contact_email($brand, $share['photographer_email']);
+}
 ?>
 <!DOCTYPE html>
 <html>
@@ -69,13 +90,16 @@ $collections = $stmt->fetchAll();
     <title><?= htmlspecialchars($page_heading) ?> &mdash; Gallery</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <link rel="stylesheet" href="style.css?v=<?= filemtime(__DIR__ . '/style.css') ?>">
+<?= $brand_style ?>
 </head>
 <body>
+<?= $brand_header ?>
 <main class="container">
 
 <h1><?= htmlspecialchars($page_heading) ?></h1>
 
-<p><a href="mailto:<?= htmlspecialchars($share['photographer_email']) ?>">Email the photographer</a></p>
+<?= $brand_welcome ?>
+<p><a href="mailto:<?= htmlspecialchars($contact_email) ?>">Email the photographer</a></p>
 
 <?php if (count($collections) > 1): ?>
     <nav aria-label="Collections">

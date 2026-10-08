@@ -3,8 +3,6 @@
 
 require_once dirname(__DIR__) . '/general_functions.php';
 
-
-
 function delete_user_account($pdo, $user_id)
 {
     $stmt = $pdo->prepare("SELECT project_id FROM tb_projects WHERE user_id = ?");
@@ -38,4 +36,14 @@ function delete_user_account($pdo, $user_id)
 
     $delete_user = $pdo->prepare("DELETE FROM tb_users WHERE user_id = ?");
     $delete_user->execute([$user_id]);
+
+    // The tb_branding row is removed automatically by its foreign key.
+    // The logo folder is not, so remove it here, and only after the
+    // account itself is gone. The path is built from an integer id only.
+    $branding_dir = STORAGE_BASE_PATH . '/branding/' . (int)$user_id;
+
+    if ((int)$user_id > 0 && is_dir($branding_dir))
+    {
+        delete_directory_recursive($branding_dir);
+    }
 }

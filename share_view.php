@@ -110,6 +110,23 @@ $next_file = ($current_index < count($images) - 1) ? $images[$current_index + 1]
 $stmt = $pdo->prepare("SELECT notes FROM tb_images WHERE collection_id = ? AND stored_filename = ?");
 $stmt->execute([$collection_id, $safe_current]);
 $current_notes = $stmt->fetchColumn();
+
+// Branding: the account owner's colours and header band. Every value
+// defaults to "no branding", so if the helper file is missing, or branding
+// is off for this account, the page looks as it always has.
+$brand_style  = '';
+$brand_header = '';
+
+$branding_file = dirname(__DIR__) . '/branding_functions.php';
+
+if (is_file($branding_file))
+{
+    require_once $branding_file;
+
+    $brand        = get_branding($pdo, $result['project_id']);
+    $brand_style  = branding_style_block($brand);
+    $brand_header = branding_header_html($brand, $token);
+}
 ?>
 <!DOCTYPE html>
 <html>
@@ -120,8 +137,10 @@ $current_notes = $stmt->fetchColumn();
     <title><?= htmlspecialchars($result['collection_name']) ?></title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <link rel="stylesheet" href="style.css?v=<?= filemtime(__DIR__ . '/style.css') ?>">
+<?= $brand_style ?>
 </head>
 <body>
+<?= $brand_header ?>
 <main class="container">
 
 <p><a href="share.php?token=<?= htmlspecialchars($token) ?>#f-<?= $collection_id ?>-<?= htmlspecialchars($safe_current) ?>">&larr; Back to gallery</a></p>
