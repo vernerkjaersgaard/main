@@ -380,5 +380,6 @@ document.querySelectorAll('.action-select').forEach(function (actionSelect)
 </script>
 
 </main>
+    <?= isset($brand) ? branding_footer_html($brand) : '' ?>
 </body>
 </html>

@@ -168,5 +168,6 @@ if (is_file($branding_file))
 </div>
 
 </main>
+    <?= isset($brand) ? branding_footer_html($brand) : '' ?>
 </body>
 </html>

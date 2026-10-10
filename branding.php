@@ -26,7 +26,7 @@ if (!$stmt->fetchColumn())
 }
 
 $stmt = $pdo->prepare("
-    SELECT display_name, primary_color, accent_color, welcome_text, contact_email, logo_filename, logo_version
+    SELECT display_name, primary_color, accent_color, welcome_text, footer_text, contact_email, logo_filename, logo_version
     FROM tb_branding WHERE user_id = ?
 ");
 $stmt->execute([$user_id]);
@@ -36,7 +36,8 @@ if (!$row)
 {
     $row = [
         'display_name' => null, 'primary_color' => null, 'accent_color' => null,
-        'welcome_text' => null, 'contact_email' => null, 'logo_filename' => null, 'logo_version' => 0,
+        'welcome_text' => null, 'footer_text' => null, 'contact_email' => null,
+        'logo_filename' => null, 'logo_version' => 0,
     ];
 }
 
@@ -52,6 +53,7 @@ $form = [
     'use_accent'    => ($row['accent_color'] !== null),
     'accent_color'  => $row['accent_color'] ?? '#E0A800',
     'welcome_text'  => (string)$row['welcome_text'],
+    'footer_text'   => (string)$row['footer_text'],
     'contact_email' => (string)$row['contact_email'],
 ];
 
@@ -59,6 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 {
     $display_name  = trim($_POST['display_name'] ?? '');
     $welcome_text  = str_replace(["\r\n", "\r"], "\n", trim($_POST['welcome_text'] ?? ''));
+    $footer_text   = str_replace(["\r\n", "\r"], "\n", trim($_POST['footer_text'] ?? ''));
     $contact_email = trim($_POST['contact_email'] ?? '');
     $use_primary   = !empty($_POST['use_primary']);
     $use_accent    = !empty($_POST['use_accent']);
@@ -72,8 +75,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     $clean = preg_replace('/[^\P{C}\n]/u', '', $welcome_text);
     if ($clean === null) { $errors[] = 'The welcome text contains invalid characters.'; } else { $welcome_text = $clean; }
 
+    $clean = preg_replace('/[^\P{C}\n]/u', '', $footer_text);
+    if ($clean === null) { $errors[] = 'The footer text contains invalid characters.'; } else { $footer_text = $clean; }
+
     if (mb_strlen($display_name) > 100)  { $errors[] = 'The name can be at most 100 characters.'; }
     if (mb_strlen($welcome_text) > 1000) { $errors[] = 'The welcome text can be at most 1000 characters.'; }
+    if (mb_strlen($footer_text) > 300)   { $errors[] = 'The footer text can be at most 300 characters.'; }
     if ($use_primary && $primary === null) { $errors[] = 'The main colour is not valid.'; }
     if ($use_accent && $accent === null)   { $errors[] = 'The accent colour is not valid.'; }
 
@@ -156,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
         $update = $pdo->prepare("
             UPDATE tb_branding
-            SET display_name = ?, primary_color = ?, accent_color = ?, welcome_text = ?,
+            SET display_name = ?, primary_color = ?, accent_color = ?, welcome_text = ?, footer_text = ?,
                 contact_email = ?, logo_filename = ?, logo_version = ?
             WHERE user_id = ?
         ");
@@ -165,6 +172,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
             $primary,
             $accent,
             ($welcome_text === '' ? null : $welcome_text),
+            ($footer_text === '' ? null : $footer_text),
             ($contact_email === '' ? null : $contact_email),
             $logo_filename,
             $logo_version,
@@ -185,6 +193,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         'use_accent'    => $use_accent,
         'accent_color'  => $accent ?? '#E0A800',
         'welcome_text'  => $welcome_text,
+        'footer_text'   => $footer_text,
         'contact_email' => $contact_email,
     ];
 }
@@ -223,6 +232,7 @@ require_once __DIR__ . '/header.php';
     <span id="preview-name" style="font-size:1.4rem; font-weight:bold;"><?= htmlspecialchars($form['display_name']) ?></span>
 </div>
 <div id="preview-welcome" style="margin:1rem 0; padding:0.75rem 1rem; border-left:4px solid <?= htmlspecialchars($band) ?>; background:rgba(255,255,255,0.55); border-radius:4px; <?= $form['welcome_text'] === '' ? 'display:none;' : '' ?>"><?= nl2br(htmlspecialchars($form['welcome_text'])) ?></div>
+<div id="preview-footer" style="margin:1rem 0; padding:0.75rem 1rem; text-align:center; font-size:0.85rem; border-top:3px solid <?= htmlspecialchars($band) ?>; <?= $form['footer_text'] === '' ? 'display:none;' : '' ?>"><?= nl2br(htmlspecialchars(str_replace('{year}', date('Y'), $form['footer_text']))) ?></div>
 
 <form method="post" enctype="multipart/form-data">
 
@@ -244,6 +254,10 @@ require_once __DIR__ . '/header.php';
 
     <label>Welcome text (plain text, up to 1000 characters)
         <textarea name="welcome_text" id="f-welcome" rows="4" maxlength="1000"><?= htmlspecialchars($form['welcome_text']) ?></textarea>
+    </label>
+
+    <label>Footer line shown at the bottom of every page (plain text, up to 300 characters; {year} becomes the current year)
+        <textarea name="footer_text" id="f-footer" rows="2" maxlength="300" placeholder="© {year} Your Company (CVR: 12121212122), Tel: +45 12 34 56 78"><?= htmlspecialchars($form['footer_text']) ?></textarea>
     </label>
 
     <label>Contact email shown to viewers (optional, otherwise your login email is used)
@@ -289,9 +303,16 @@ function refreshPreview()
     welcome.style.whiteSpace = 'pre-line';
     welcome.style.display = text.trim() === '' ? 'none' : '';
     welcome.style.borderLeftColor = band;
+
+    const footer = document.getElementById('preview-footer');
+    const footerText = document.getElementById('f-footer').value;
+    footer.textContent = footerText.replace(/\{year\}/g, new Date().getFullYear());
+    footer.style.whiteSpace = 'pre-line';
+    footer.style.display = footerText.trim() === '' ? 'none' : '';
+    footer.style.borderTopColor = band;
 }
 
-['f-name', 'f-welcome', 'f-primary', 'f-use-primary', 'f-accent', 'f-use-accent'].forEach(function (id)
+['f-name', 'f-welcome', 'f-footer', 'f-primary', 'f-use-primary', 'f-accent', 'f-use-accent'].forEach(function (id)
 {
     document.getElementById(id).addEventListener('input', refreshPreview);
     document.getElementById(id).addEventListener('change', refreshPreview);

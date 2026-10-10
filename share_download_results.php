@@ -77,5 +77,6 @@ if (is_file($branding_file))
 <p><a href="share.php?token=<?= htmlspecialchars($token) ?>">&larr; Back to gallery</a></p>
 
 </main>
+    <?= isset($brand) ? branding_footer_html($brand) : '' ?>
 </body>
 </html>

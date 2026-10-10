@@ -212,5 +212,6 @@ document.addEventListener('keydown', function (e)
 </script>
 
 </main>
+    <?= isset($brand) ? branding_footer_html($brand) : '' ?>
 </body>
 </html>

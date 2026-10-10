@@ -162,5 +162,6 @@ document.getElementById('copy-btn')?.addEventListener('click', function ()
 </script>
 
 </main>
+    <?= isset($brand) ? branding_footer_html($brand) : '' ?>
 </body>
 </html>
