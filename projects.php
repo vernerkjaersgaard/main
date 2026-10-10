@@ -69,13 +69,15 @@ $stmt = $pdo->prepare("
 $stmt->execute([$_SESSION['user_id']]);
 $my_usage_bytes = $stmt->fetchColumn();
 
-// The storage cap, and whether the administrator has switched branding on
-// for this account (which decides if the Branding button is shown).
-$stmt = $pdo->prepare("SELECT storage_cap_mb, branding_enabled FROM tb_users WHERE user_id = ?");
+// The storage cap, and whether the administrator has switched branding and
+// watermarking on for this account (which decide if the Branding and
+// Watermark buttons are shown).
+$stmt = $pdo->prepare("SELECT storage_cap_mb, branding_enabled, watermark_enabled FROM tb_users WHERE user_id = ?");
 $stmt->execute([$_SESSION['user_id']]);
 $me = $stmt->fetch();
 $my_cap_mb = $me['storage_cap_mb'];
 $branding_on = !empty($me['branding_enabled']);
+$watermark_on = !empty($me['watermark_enabled']);
 ?>
 
 <h1>Projects</h1>
@@ -95,6 +97,9 @@ Storage used: <?= format_bytes($my_usage_bytes) ?>
 <a href="create_project.php" role="button">+ New Project</a>
 <?php if ($branding_on): ?>
 <a href="branding.php" role="button" class="secondary">Branding</a>
+<?php endif; ?>
+<?php if ($watermark_on): ?>
+<a href="watermark.php" role="button" class="secondary">Watermark</a>
 <?php endif; ?>
 </p>
 

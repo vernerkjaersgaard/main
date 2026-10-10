@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     // Prevent an admin from accidentally revoking their own access or
     // deleting their own account, which could lock them out of this page
     // with no way back in short of a direct SQL fix. Harmless settings
-    // (storage cap, branding) are allowed on your own row.
+    // (storage cap, branding, watermark) are allowed on your own row.
     $protected_actions = ['grant', 'revoke', 'delete_user'];
 
     if ($target_user_id === (int)$_SESSION['user_id'] && in_array($post_action, $protected_actions, true))
@@ -52,6 +52,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         $update->execute([$enable, $target_user_id]);
 
         log_action($pdo, $_SESSION['user_id'], $enable ? 'branding_enabled' : 'branding_disabled', null, null, 'target user_id: ' . $target_user_id);
+    }
+    elseif ($post_action === 'set_watermark')
+    {
+        $enable = (($_POST['watermark_enabled'] ?? '') === '1') ? 1 : 0;
+
+        // This only controls whether the customer may open the watermark
+        // settings page. Images that are already locked stay locked either
+        // way: the flag on each image decides that, not this switch.
+        $update = $pdo->prepare("UPDATE tb_users SET watermark_enabled = ? WHERE user_id = ?");
+        $update->execute([$enable, $target_user_id]);
+
+        log_action($pdo, $_SESSION['user_id'], $enable ? 'watermark_enabled' : 'watermark_disabled', null, null, 'target user_id: ' . $target_user_id);
     }
     elseif ($post_action === 'delete_user')
     {
@@ -110,16 +122,18 @@ $users = $pdo->query("
         u.is_admin,
         u.storage_cap_mb,
         u.branding_enabled,
+        u.watermark_enabled,
         u.date_of_creation,
         COUNT(DISTINCT p.project_id) AS project_count,
         COUNT(DISTINCT c.collection_id) AS collection_count,
         COALESCE(SUM(CASE WHEN i.status = 'complete' THEN i.file_size ELSE 0 END), 0) AS storage_bytes,
-        COALESCE(SUM(CASE WHEN i.status = 'complete' THEN 1 ELSE 0 END), 0) AS image_count
+        COALESCE(SUM(CASE WHEN i.status = 'complete' THEN 1 ELSE 0 END), 0) AS image_count,
+        COALESCE(SUM(CASE WHEN i.watermark = 1 THEN 1 ELSE 0 END), 0) AS locked_count
     FROM tb_users u
     LEFT JOIN tb_projects p ON p.user_id = u.user_id
     LEFT JOIN tb_collections c ON c.project_id = p.project_id
     LEFT JOIN tb_images i ON i.collection_id = c.collection_id
-    GROUP BY u.user_id, u.username, u.email, u.is_admin, u.storage_cap_mb, u.branding_enabled, u.date_of_creation
+    GROUP BY u.user_id, u.username, u.email, u.is_admin, u.storage_cap_mb, u.branding_enabled, u.watermark_enabled, u.date_of_creation
     ORDER BY u.date_of_creation DESC
 ")->fetchAll();
 /*
@@ -176,6 +190,7 @@ require_once __DIR__ . '/header.php';
             <th></th>
             <th>Storage Cap (MB)</th>
             <th>Branding</th>
+            <th>Watermark</th>
             <th></th>
         </tr>
     </thead>
@@ -219,6 +234,21 @@ require_once __DIR__ . '/header.php';
                         <input type="hidden" name="branding_enabled" value="<?= $user['branding_enabled'] ? '0' : '1' ?>">
                         <!--<?= $user['branding_enabled'] ? 'On' : 'Off' ?>-->
                         <button type="submit" class="secondary"><?= $user['branding_enabled'] ? 'Disable' : 'Enable' ?></button>
+                    </form>
+                </td>
+                <td>
+                    <form method="post" style="display:inline;"
+                        <?php if ($user['watermark_enabled'] && (int)$user['locked_count'] > 0): ?>
+                        onsubmit="return confirm('This account has <?= (int)$user['locked_count'] ?> locked image(s). They stay locked, but the customer will no longer be able to open the watermark settings. Switch watermarking off?');"
+                        <?php endif; ?>>
+                        <input type="hidden" name="user_id" value="<?= (int)$user['user_id'] ?>">
+                        <input type="hidden" name="toggle_action" value="set_watermark">
+                        <input type="hidden" name="watermark_enabled" value="<?= $user['watermark_enabled'] ? '0' : '1' ?>">
+                        <!--<?= $user['watermark_enabled'] ? 'On' : 'Off' ?>-->
+                        <?php if ((int)$user['locked_count'] > 0): ?>
+                            <small>(<?= (int)$user['locked_count'] ?> locked)</small>
+                        <?php endif; ?>
+                        <button type="submit" class="secondary"><?= $user['watermark_enabled'] ? 'Disable' : 'Enable' ?></button>
                     </form>
                 </td>
                 <td>

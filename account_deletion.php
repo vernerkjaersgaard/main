@@ -37,13 +37,26 @@ function delete_user_account($pdo, $user_id)
     $delete_user = $pdo->prepare("DELETE FROM tb_users WHERE user_id = ?");
     $delete_user->execute([$user_id]);
 
-    // The tb_branding row is removed automatically by its foreign key.
-    // The logo folder is not, so remove it here, and only after the
-    // account itself is gone. The path is built from an integer id only.
-    $branding_dir = STORAGE_BASE_PATH . '/branding/' . (int)$user_id;
+    // The tb_branding and tb_watermarks rows are removed automatically by
+    // their foreign keys. The logo and watermark folders are not, so remove
+    // them here, and only after the account itself is gone. The paths are
+    // built from an integer id only.
+    $user_id = (int)$user_id;
 
-    if ((int)$user_id > 0 && is_dir($branding_dir))
+    if ($user_id > 0)
     {
-        delete_directory_recursive($branding_dir);
+        $branding_dir = STORAGE_BASE_PATH . '/branding/' . $user_id;
+
+        if (is_dir($branding_dir))
+        {
+            delete_directory_recursive($branding_dir);
+        }
+
+        $watermark_dir = STORAGE_BASE_PATH . '/watermarks/' . $user_id;
+
+        if (is_dir($watermark_dir))
+        {
+            delete_directory_recursive($watermark_dir);
+        }
     }
 }
