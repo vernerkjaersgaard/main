@@ -107,9 +107,17 @@ if ($current_index === false)
 $prev_file = ($current_index > 0) ? $images[$current_index - 1] : null;
 $next_file = ($current_index < count($images) - 1) ? $images[$current_index + 1] : null;
 
-$stmt = $pdo->prepare("SELECT notes FROM tb_images WHERE collection_id = ? AND stored_filename = ?");
+// The notes, and whether this image is a locked (watermarked) preview.
+$stmt = $pdo->prepare("SELECT notes, watermark FROM tb_images WHERE collection_id = ? AND stored_filename = ?");
 $stmt->execute([$collection_id, $safe_current]);
-$current_notes = $stmt->fetchColumn();
+$current_row = $stmt->fetch();
+
+$current_notes = $current_row ? $current_row['notes'] : false;
+
+// A locked image is shown as a watermarked preview only, with no full-size
+// link (share_image.php refuses full size for it anyway). When in doubt
+// (a missing value) it counts as locked.
+$is_locked = ((int)($current_row['watermark'] ?? 1) !== 0);
 
 // Branding: the account owner's colours and header band. Every value
 // defaults to "no branding", so if the helper file is missing, or branding
@@ -152,10 +160,15 @@ if (is_file($branding_file))
          alt="<?= htmlspecialchars($safe_current) ?>"
          class="share-full-image">
     <p>
+<?php if (!$is_locked): ?>
         <a href="share_image.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection_id ?>&file=<?= urlencode($safe_current) ?>&size=full" target="_blank">
             View full resolution
         </a>
         &nbsp;|&nbsp;
+<?php else: ?>
+        🔒 Preview: this image cannot be viewed in full size or downloaded until the photographer releases it.
+        &nbsp;|&nbsp;
+<?php endif; ?>
         <a href="#notes"><?= $current_notes ? '💬 View notes' : '💬 Add a note' ?></a>
     </p>
 </div>

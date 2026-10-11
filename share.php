@@ -142,7 +142,7 @@ if (is_file($branding_file))
 
         <?php
         $stmt = $pdo->prepare("
-            SELECT i.stored_filename, i.original_filename, i.tag_color, i.notes, aft.file_kind, aft.extension
+            SELECT i.stored_filename, i.original_filename, i.tag_color, i.notes, i.watermark, aft.file_kind, aft.extension
             FROM tb_images i
             JOIN tb_allowed_filetypes aft ON aft.filetype_id = i.filetype_id
             WHERE i.collection_id = ? AND i.status = 'complete'
@@ -153,6 +153,7 @@ if (is_file($branding_file))
 
         $tag_counts = ['red' => 0, 'green' => 0, 'blue' => 0, 'yellow' => 0, 'purple' => 0, 'none' => 0];
         $note_count = 0;
+        $locked_count = 0;
         foreach ($images as $image)
         {
             $tag_counts[$image['tag_color']]++;
@@ -161,7 +162,18 @@ if (is_file($branding_file))
             {
                 $note_count++;
             }
+
+            // A locked image is a preview only. When in doubt (a missing
+            // value) it counts as locked.
+            if ((int)($image['watermark'] ?? 1) !== 0)
+            {
+                $locked_count++;
+            }
         }
+
+        // Everything in this collection is locked: nothing can be
+        // downloaded, so the download options are not offered at all.
+        $all_locked = (count($images) > 0 && $locked_count === count($images));
         ?>
 
         <?php if (empty($images)): ?>
@@ -188,6 +200,9 @@ if (is_file($branding_file))
                 <a href="#" class="tag-summary-item tag-filter" data-filter="all">Show all</a>
             </div>
             <p><a href="share_image_list.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection['collection_id'] ?>">Generate copyable image list</a></p>
+<?php if ($locked_count > 0): ?>
+            <p class="lock-explanation"><small>🔒 Images marked with a lock are previews. They can be viewed but not downloaded until the photographer releases them.</small></p>
+<?php endif; ?>
 
             <form method="post" action="share_action.php" class="tag-form">
                 <input type="hidden" name="token" value="<?= htmlspecialchars($token) ?>">
@@ -202,9 +217,11 @@ if (is_file($branding_file))
                     <select name="gallery_action" class="action-select" required>
                         <option value="">Choose an action&hellip;</option>
                         <option value="tag">Set color tag&hellip;</option>
+<?php if (!$all_locked): ?>
                         <option value="download_full">Download full size (zip)</option>
                         <option value="download_medium">Download medium scaled (zip)</option>
                         <option value="download_small">Download small scaled (zip)</option>
+<?php endif; ?>
                     </select>
 
                     <select name="tag_color" class="tag-color-select" style="display:none;">
@@ -229,6 +246,9 @@ if (is_file($branding_file))
                             <?php if (!empty($image['notes'])): ?>
                                 <span class="has-note-badge" title="Has notes">&#9998;</span>
                             <?php endif; ?>
+<?php if ((int)($image['watermark'] ?? 1) !== 0): ?>
+                            <span class="lock-badge" title="Locked preview" style="position:absolute; bottom:8px; right:8px; z-index:1; background:rgba(0,0,0,0.65); color:#fff; border-radius:4px; padding:0 6px; font-size:0.9rem;">🔒</span>
+<?php endif; ?>
 
                             <?php if ($image['file_kind'] === 'image'): ?>
                                 <a href="share_view.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection['collection_id'] ?>&file=<?= urlencode($image['stored_filename']) ?>" target="_blank">
