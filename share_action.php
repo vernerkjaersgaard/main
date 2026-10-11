@@ -59,10 +59,11 @@ if (empty($candidate_files))
 }
 
 // Now pulls file_kind/extension via tb_allowed_filetypes too — same
-// reasoning as gallery_action.php.
+// reasoning as gallery_action.php. i.watermark tells which images are
+// locked previews (1) and which are released (0).
 $placeholders = implode(',', array_fill(0, count($candidate_files), '?'));
 $stmt = $pdo->prepare("
-    SELECT i.image_id, i.stored_filename, aft.file_kind, aft.extension
+    SELECT i.image_id, i.stored_filename, i.watermark, aft.file_kind, aft.extension
     FROM tb_images i
     JOIN tb_allowed_filetypes aft ON aft.filetype_id = i.filetype_id
     WHERE i.collection_id = ? AND i.status = 'complete' AND i.stored_filename IN ($placeholders)
@@ -81,6 +82,7 @@ $image_ids = array_column($valid_images, 'image_id');
 
 // ---------------------------------------------------------------
 // TAG
+// Locked images can be tagged: that is how a customer picks what to buy.
 // ---------------------------------------------------------------
 if ($action === 'tag')
 {
@@ -110,13 +112,41 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
 {
     require_once __DIR__ . '/vendor/autoload.php';
 
+    // Locked images never go into a download. This is decided here, from
+    // the database, whatever the browser sent. When in doubt (a missing
+    // value) an image counts as locked.
+    $downloadable = [];
+    $locked_skipped = 0;
+
+    foreach ($valid_images as $item)
+    {
+        if ((int)($item['watermark'] ?? 1) === 0)
+        {
+            $downloadable[] = $item;
+        }
+        else
+        {
+            $locked_skipped++;
+        }
+    }
+
+    // Nothing released in the selection: no zip is built at all.
+    if (empty($downloadable))
+    {
+        log_action($pdo, null, 'share_download_blocked', $result['project_id'], $collection_id, $locked_skipped . ' locked item(s) requested');
+
+        header('Location: share.php?token=' . urlencode($token) . '&error=locked_only');
+        exit;
+    }
+
     // "Don't double-zip a lone zip" — identical logic to gallery_action.php,
     // just redirecting to the token-authenticated download endpoint instead.
-    if (count($valid_images) === 1 && $valid_images[0]['file_kind'] === 'file' && $valid_images[0]['extension'] === 'zip')
+    // Only when the customer selected exactly that one released file.
+    if (count($valid_images) === 1 && count($downloadable) === 1 && $downloadable[0]['file_kind'] === 'file' && $downloadable[0]['extension'] === 'zip')
     {
-        log_action($pdo, null, 'share_download_file', $result['project_id'], $collection_id, $valid_images[0]['stored_filename'] . ' (already a zip, served directly)');
+        log_action($pdo, null, 'share_download_file', $result['project_id'], $collection_id, $downloadable[0]['stored_filename'] . ' (already a zip, served directly)');
 
-        header('Location: share_file_download.php?token=' . urlencode($token) . '&collection_id=' . $collection_id . '&file=' . urlencode($valid_images[0]['stored_filename']));
+        header('Location: share_file_download.php?token=' . urlencode($token) . '&collection_id=' . $collection_id . '&file=' . urlencode($downloadable[0]['stored_filename']));
         exit;
     }
 
@@ -132,7 +162,7 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
 
     $originals_dir = $result['storage_path'] . '/originals';
     $files_dir     = $result['storage_path'] . '/files';
-    $chunks = array_chunk($valid_images, 70);
+    $chunks = array_chunk($downloadable, 70);
     $tokens = [];
 
     foreach ($chunks as $chunk)
@@ -201,9 +231,13 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
 
     $token_list = implode(',', $tokens);
 
-    log_action($pdo, null, 'share_' . $action, $result['project_id'], $collection_id, count($valid_images) . ' item(s)');
+    log_action($pdo, null, 'share_' . $action, $result['project_id'], $collection_id,
+        count($downloadable) . ' item(s)' . ($locked_skipped > 0 ? ', ' . $locked_skipped . ' locked skipped' : ''));
 
-    header('Location: share_download_results.php?token=' . urlencode($token) . '&collection_id=' . $collection_id . '&batch=' . $batch_id . '&tokens=' . urlencode($token_list));
+    // The skipped count is added only when there is one, so the address is
+    // exactly what it was before for an ordinary download.
+    header('Location: share_download_results.php?token=' . urlencode($token) . '&collection_id=' . $collection_id . '&batch=' . $batch_id . '&tokens=' . urlencode($token_list)
+        . ($locked_skipped > 0 ? '&locked=' . $locked_skipped : ''));
     exit;
 }
 

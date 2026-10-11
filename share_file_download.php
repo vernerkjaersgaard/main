@@ -45,9 +45,9 @@ if ($safe_filename === '' || $safe_filename !== $file)
 
 // Same source-of-truth check as share_image.php — a genuine, complete,
 // tracked file belonging to THIS collection, not just something that
-// happens to exist on disk.
+// happens to exist on disk. The watermark flag is fetched with it.
 $stmt = $pdo->prepare("
-    SELECT original_filename
+    SELECT original_filename, watermark
     FROM tb_images
     WHERE collection_id = ? AND stored_filename = ? AND status = 'complete'
 ");
@@ -58,6 +58,17 @@ if (!$image_row)
 {
     http_response_code(404);
     exit('File not found.');
+}
+
+// A locked file is not downloadable until the photographer releases it.
+// When in doubt (a missing value) it counts as locked.
+if ((int)($image_row['watermark'] ?? 1) !== 0)
+{
+    log_action($pdo, null, 'share_download_blocked', $result['project_id'], $collection_id, $image_row['original_filename'] . ' (locked)');
+
+    http_response_code(403);
+    header('Cache-Control: no-store');
+    exit('This file is locked and cannot be downloaded yet.');
 }
 
 $path = $result['storage_path'] . '/files/' . $safe_filename;

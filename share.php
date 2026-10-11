@@ -122,6 +122,7 @@ if (is_file($branding_file))
             'nothing_ticked' => 'Please tick at least one image first.',
             'invalid_selection' => 'Invalid selection.',
             'invalid_color' => 'Please choose a valid color.',
+            'locked_only' => 'The selected images are locked previews and cannot be downloaded yet.',
         ];
         echo htmlspecialchars($messages[$_GET['error']] ?? 'Something went wrong.');
         ?>

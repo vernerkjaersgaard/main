@@ -8,6 +8,10 @@ $batch_id = $_GET['batch'] ?? '';
 $zip_tokens = array_filter(explode(',', $_GET['tokens'] ?? ''));
 $total = count($zip_tokens);
 
+// How many locked images were left out of this download. Display only:
+// share_action.php has already left them out. Forced to a whole number.
+$locked_skipped = max(0, min(100000, (int)($_GET['locked'] ?? 0)));
+
 if (!preg_match('/^[a-f0-9]{64}$/', $token) || !preg_match('/^[a-f0-9]{32}$/', $batch_id))
 {
     http_response_code(404);
@@ -64,6 +68,11 @@ if (is_file($branding_file))
 
 <h1>Your Download<?= $total > 1 ? 's are' : ' is' ?> Ready</h1>
 
+<?php if ($locked_skipped > 0): ?>
+    <p><strong><?= $locked_skipped ?> locked image<?= $locked_skipped === 1 ? ' was' : 's were' ?> not included.</strong>
+    Locked images are previews and cannot be downloaded until the photographer releases them.</p>
+<?php endif; ?>
+
 <?php if (empty($zip_tokens)): ?>
     <p>No files were generated.</p>
 <?php else: ?>
@@ -77,6 +86,6 @@ if (is_file($branding_file))
 <p><a href="share.php?token=<?= htmlspecialchars($token) ?>">&larr; Back to gallery</a></p>
 
 </main>
-    <?= isset($brand) ? branding_footer_html($brand) : '' ?>
+<?= isset($brand) ? branding_footer_html($brand) : '' ?>
 </body>
 </html>

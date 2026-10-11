@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 }
 
 $stmt = $pdo->prepare("
-    SELECT i.original_filename, i.file_size, i.notes, aft.extension
+    SELECT i.original_filename, i.file_size, i.notes, i.watermark, aft.extension
     FROM tb_images i
     JOIN tb_allowed_filetypes aft ON aft.filetype_id = i.filetype_id
     WHERE i.collection_id = ? AND i.stored_filename = ? AND i.status = 'complete'
@@ -97,6 +97,11 @@ if (!$file_info)
     http_response_code(404);
     exit('File not found.');
 }
+
+// A locked file is a preview only: its Download button is not shown, and
+// share_file_download.php refuses it anyway. When in doubt (a missing
+// value) it counts as locked.
+$is_locked = ((int)($file_info['watermark'] ?? 1) !== 0);
 
 // Branding: the account owner's colours and header band. Every value
 // defaults to "no branding", so if the helper file is missing, or branding
@@ -138,11 +143,15 @@ if (is_file($branding_file))
     </div>
     <h2 style="margin-top:1rem;"><?= htmlspecialchars($file_info['original_filename']) ?></h2>
     <p><?= format_bytes($file_info['file_size']) ?></p>
+<?php if (!$is_locked): ?>
     <p>
         <a href="share_file_download.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection_id ?>&file=<?= urlencode($safe_current) ?>" role="button">
             Download
         </a>
     </p>
+<?php else: ?>
+    <p><strong>🔒 Locked.</strong> This file cannot be downloaded until the photographer releases it.</p>
+<?php endif; ?>
 </div>
 
 <div style="margin-top:1.5rem;">
