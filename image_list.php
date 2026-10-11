@@ -24,7 +24,7 @@ if (!$collection)
 }
 
 $stmt = $pdo->prepare("
-    SELECT original_filename, tag_color, notes
+    SELECT original_filename, tag_color, notes, watermark
     FROM tb_images
     WHERE collection_id = ? AND status = 'complete'
     ORDER BY original_filename
@@ -36,17 +36,27 @@ $images = $stmt->fetchAll();
 // since it's the "everything else" bucket rather than a real tag choice.
 // Images with notes are also collected into a separate list, shown as an
 // extra section at the end; they stay in their colour group too.
+// Locked (watermarked) images are marked, the same way the customer's
+// list marks them.
 $groups = ['red' => [], 'green' => [], 'blue' => [], 'yellow' => [], 'purple' => [], 'none' => []];
 $with_notes = [];
+$locked_total = 0;
 
 foreach ($images as $image)
 {
-    $groups[$image['tag_color']][] = $image['original_filename'];
+    $is_locked = ((int)($image['watermark'] ?? 1) !== 0);
+
+    if ($is_locked)
+    {
+        $locked_total++;
+    }
+
+    $groups[$image['tag_color']][] = $image['original_filename'] . ($is_locked ? ' [locked]' : '');
 
     if (!empty($image['notes']))
     {
         $label = ($image['tag_color'] === 'none') ? 'untagged' : $image['tag_color'];
-        $with_notes[] = $image['original_filename'] . ' [' . $label . ']';
+        $with_notes[] = $image['original_filename'] . ' [' . $label . ($is_locked ? ', locked' : '') . ']';
     }
 }
 
@@ -85,6 +95,12 @@ if (!empty($with_notes))
         $lines[] = $entry;
     }
 
+    $lines[] = '';
+}
+
+if ($locked_total > 0)
+{
+    $lines[] = '[locked] = watermarked preview only, not yet released to customers (' . $locked_total . ' of ' . count($images) . ')';
     $lines[] = '';
 }
 
