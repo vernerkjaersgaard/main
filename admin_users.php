@@ -244,7 +244,7 @@ require_once __DIR__ . '/header.php';
                         <input type="hidden" name="user_id" value="<?= (int)$user['user_id'] ?>">
                         <input type="hidden" name="toggle_action" value="set_watermark">
                         <input type="hidden" name="watermark_enabled" value="<?= $user['watermark_enabled'] ? '0' : '1' ?>">
-                        <!--<?= $user['watermark_enabled'] ? 'On' : 'Off' ?>-->
+                        <?= $user['watermark_enabled'] ? 'On' : 'Off' ?>
                         <?php if ((int)$user['locked_count'] > 0): ?>
                             <small>(<?= (int)$user['locked_count'] ?> locked)</small>
                         <?php endif; ?>
