@@ -35,7 +35,7 @@ if (!$result || $is_expired)
 }
 
 $stmt = $pdo->prepare("
-    SELECT original_filename, tag_color, notes
+    SELECT original_filename, tag_color, notes, watermark
     FROM tb_images
     WHERE collection_id = ? AND status = 'complete'
     ORDER BY original_filename
@@ -45,15 +45,25 @@ $images = $stmt->fetchAll();
 
 $groups = ['red' => [], 'green' => [], 'blue' => [], 'yellow' => [], 'purple' => [], 'none' => []];
 $with_notes = [];
+$locked_total = 0;
 
 foreach ($images as $image)
 {
-    $groups[$image['tag_color']][] = $image['original_filename'];
+    // A locked image is a preview only, and is marked in the list. When in
+    // doubt (a missing value) it counts as locked.
+    $is_locked = ((int)($image['watermark'] ?? 1) !== 0);
+
+    if ($is_locked)
+    {
+        $locked_total++;
+    }
+
+    $groups[$image['tag_color']][] = $image['original_filename'] . ($is_locked ? ' [locked]' : '');
 
     if (!empty($image['notes']))
     {
         $label = ($image['tag_color'] === 'none') ? 'untagged' : $image['tag_color'];
-        $with_notes[] = $image['original_filename'] . ' [' . $label . ']';
+        $with_notes[] = $image['original_filename'] . ' [' . $label . ($is_locked ? ', locked' : '') . ']';
     }
 }
 
@@ -91,6 +101,12 @@ if (!empty($with_notes))
         $lines[] = $entry;
     }
 
+    $lines[] = '';
+}
+
+if ($locked_total > 0)
+{
+    $lines[] = '[locked] = preview only, not yet released by the photographer (' . $locked_total . ' of ' . count($images) . ')';
     $lines[] = '';
 }
 

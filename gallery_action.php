@@ -92,8 +92,69 @@ if ($action === 'tag')
 }
 
 // ---------------------------------------------------------------
+// LOCK — mark the ticked items as watermarked previews.
+// Customers then see only a watermarked preview and cannot download
+// them. Needs the administrator's switch AND a usable watermark file,
+// so an image is never locked in a way that cannot be previewed.
+// ---------------------------------------------------------------
+if ($action === 'watermark_add')
+{
+    $stmt = $pdo->prepare("SELECT watermark_enabled FROM tb_users WHERE user_id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+
+    if ((int)$stmt->fetchColumn() !== 1)
+    {
+        header('Location: upload.php?collection_id=' . $collection_id . '&error=unknown_action');
+        exit;
+    }
+
+    $helper = dirname(__DIR__) . '/watermark_functions.php';
+    $settings = null;
+
+    if (is_file($helper))
+    {
+        require_once $helper;
+        $settings = wm_get_settings($pdo, $collection['project_id']);
+    }
+
+    if ($settings === null)
+    {
+        header('Location: upload.php?collection_id=' . $collection_id . '&error=watermark_not_ready');
+        exit;
+    }
+
+    $id_placeholders = implode(',', array_fill(0, count($image_ids), '?'));
+    $update = $pdo->prepare("UPDATE tb_images SET watermark = 1, watermark_released_at = NULL WHERE image_id IN ($id_placeholders) AND watermark = 0");
+    $update->execute($image_ids);
+    $changed = $update->rowCount();
+
+    log_action($pdo, $_SESSION['user_id'], 'watermark_added', $collection['project_id'], $collection_id, $changed . ' item(s) locked');
+
+    header('Location: upload.php?collection_id=' . $collection_id . '&locked=' . $changed);
+    exit;
+}
+
+// ---------------------------------------------------------------
+// RELEASE — remove the lock from the ticked items. Customers can then
+// view them in full size and download them. The time of the release is
+// recorded. Always allowed, even if the administrator's switch is off.
+// ---------------------------------------------------------------
+if ($action === 'watermark_remove')
+{
+    $id_placeholders = implode(',', array_fill(0, count($image_ids), '?'));
+    $update = $pdo->prepare("UPDATE tb_images SET watermark = 0, watermark_released_at = NOW() WHERE image_id IN ($id_placeholders) AND watermark = 1");
+    $update->execute($image_ids);
+    $changed = $update->rowCount();
+
+    log_action($pdo, $_SESSION['user_id'], 'watermark_removed', $collection['project_id'], $collection_id, $changed . ' item(s) released');
+
+    header('Location: upload.php?collection_id=' . $collection_id . '&released=' . $changed);
+    exit;
+}
+
+// ---------------------------------------------------------------
 // DELETE — now also cleans up files/ for foreign files, not just
-// originals/thumbs/medium
+// originals/thumbs/medium, and any cached watermarked preview
 // ---------------------------------------------------------------
 if ($action === 'delete')
 {
@@ -116,6 +177,15 @@ if ($action === 'delete')
                 if (is_file($path))
                 {
                     unlink($path);
+                }
+            }
+
+            // Cached watermarked previews, one per render version
+            foreach (glob($collection['storage_path'] . '/wm/*/' . $filename . '.jpg') ?: [] as $cached)
+            {
+                if (is_file($cached))
+                {
+                    unlink($cached);
                 }
             }
         }
@@ -143,6 +213,7 @@ if ($action === 'delete')
 
 // ---------------------------------------------------------------
 // DOWNLOAD (full / medium / small)
+// The owner's own downloads are never watermarked, locked or not.
 // ---------------------------------------------------------------
 if (in_array($action, ['download_full', 'download_medium', 'download_small'], true))
 {

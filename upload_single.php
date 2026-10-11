@@ -123,6 +123,20 @@ if (!$filetype)
 $filetype_id = $filetype['filetype_id'];
 $file_kind = $filetype['file_kind'];
 
+// Should this upload start locked (a watermarked preview until released)?
+// Only when the administrator has switched watermarking on for this
+// account, watermark settings are saved, and "lock new uploads" is ticked.
+// If the helper file is missing, the upload is simply not locked, exactly
+// as it was before watermarking existed.
+$lock_new = 0;
+$watermark_helper = dirname(__DIR__) . '/watermark_functions.php';
+
+if (is_file($watermark_helper))
+{
+    require_once $watermark_helper;
+    $lock_new = wm_should_lock_new_uploads($pdo, $_SESSION['user_id']) ? 1 : 0;
+}
+
 // Collision-safe stored filename — same logic regardless of file kind
 $safe_base = str_replace(' ', '_', pathinfo($original_name, PATHINFO_FILENAME));
 $safe_base = preg_replace('/[^a-zA-Z0-9_-]/', '_', $safe_base);
@@ -137,11 +151,14 @@ while (file_exists($originals_dir . '/' . $stored_filename) || file_exists($file
     $counter++;
 }
 
+// The lock is part of the insert itself, so the row is locked from the
+// first moment it exists. It is 'pending' (invisible to customers) until
+// the upload finishes.
 $insert = $pdo->prepare("
-    INSERT INTO tb_images (collection_id, original_filename, stored_filename, file_size, status, filetype_id)
-    VALUES (?, ?, ?, ?, 'pending', ?)
+    INSERT INTO tb_images (collection_id, original_filename, stored_filename, file_size, status, filetype_id, watermark)
+    VALUES (?, ?, ?, ?, 'pending', ?, ?)
 ");
-$insert->execute([$collection_id, $original_name, $stored_filename, $file['size'], $filetype_id]);
+$insert->execute([$collection_id, $original_name, $stored_filename, $file['size'], $filetype_id, $lock_new]);
 $image_id = $pdo->lastInsertId();
 
 // ---------------------------------------------------------------

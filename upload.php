@@ -27,7 +27,7 @@ if (!$collection)
 // not a column on tb_images itself — one join gives us everything
 // needed to decide how to render each grid cell.
 $stmt = $pdo->prepare("
-    SELECT i.stored_filename, i.original_filename, i.tag_color, i.notes, aft.file_kind, aft.extension
+    SELECT i.stored_filename, i.original_filename, i.tag_color, i.notes, i.watermark, aft.file_kind, aft.extension
     FROM tb_images i
     JOIN tb_allowed_filetypes aft ON aft.filetype_id = i.filetype_id
     WHERE i.collection_id = ? AND i.status = 'complete'
@@ -38,6 +38,7 @@ $images = $stmt->fetchAll();
 
 $tag_counts = ['red' => 0, 'green' => 0, 'blue' => 0, 'yellow' => 0, 'purple' => 0, 'none' => 0];
 $note_count = 0;
+$locked_count = 0;
 foreach ($images as $image)
 {
     $tag_counts[$image['tag_color']]++;
@@ -46,7 +47,20 @@ foreach ($images as $image)
     {
         $note_count++;
     }
+
+    if ((int)$image['watermark'] === 1)
+    {
+        $locked_count++;
+    }
 }
+$unlocked_count = count($images) - $locked_count;
+
+// Whether the administrator has switched watermarking on for this account.
+// This decides whether "Lock" is offered. "Release" is offered whenever
+// something here is locked, so locked images can always be released.
+$stmt = $pdo->prepare("SELECT watermark_enabled FROM tb_users WHERE user_id = ?");
+$stmt->execute([$_SESSION['user_id']]);
+$wm_enabled = ((int)$stmt->fetchColumn() === 1);
 
 $stmt = $pdo->prepare("SELECT COUNT(*) FROM tb_images WHERE collection_id = ? AND status = 'failed'");
 $stmt->execute([$collection_id]);
@@ -72,6 +86,12 @@ require_once __DIR__ . '/header.php';
 <?php if (isset($_GET['tagged'])): ?>
     <p style="color:green;"><?= (int)$_GET['tagged'] ?> image(s) tagged.</p>
 <?php endif; ?>
+<?php if (isset($_GET['locked'])): ?>
+    <p style="color:green;"><?= (int)$_GET['locked'] ?> item(s) locked.</p>
+<?php endif; ?>
+<?php if (isset($_GET['released'])): ?>
+    <p style="color:green;"><?= (int)$_GET['released'] ?> item(s) released.</p>
+<?php endif; ?>
 <?php if (isset($_GET['error'])): ?>
     <p style="color:red;">
         <?php
@@ -81,6 +101,7 @@ require_once __DIR__ . '/header.php';
             'invalid_color' => 'Please choose a valid color.',
             'not_implemented' => 'That feature is coming soon.',
             'unknown_action' => 'Please choose a valid action.',
+            'watermark_not_ready' => 'Save a watermark file on the Watermark page before locking images.',
         ];
         echo htmlspecialchars($messages[$_GET['error']] ?? 'Something went wrong.');
         ?>
@@ -125,6 +146,16 @@ require_once __DIR__ . '/header.php';
                 &#9998; <?= $note_count ?> with notes
             </a>
         <?php endif; ?>
+        <?php if ($locked_count > 0): ?>
+            <a href="#" class="tag-summary-item tag-filter" data-filter="locked">
+                🔒 <?= $locked_count ?> locked
+            </a>
+            <?php if ($unlocked_count > 0): ?>
+                <a href="#" class="tag-summary-item tag-filter" data-filter="unlocked">
+                    🔓 <?= $unlocked_count ?> unlocked
+                </a>
+            <?php endif; ?>
+        <?php endif; ?>
         <a href="#" class="tag-summary-item tag-filter" data-filter="all">Show all</a>
     </div>
     <p><a href="image_list.php?collection_id=<?= $collection_id ?>">Generate copyable image list</a></p>
@@ -144,6 +175,12 @@ require_once __DIR__ . '/header.php';
                 <option value="download_full">Download full size (zip)</option>
                 <option value="download_medium">Download medium scaled (zip)</option>
                 <option value="download_small">Download small scaled (zip)</option>
+                <?php if ($wm_enabled): ?>
+                <option value="watermark_add">Lock: add watermark to ticked</option>
+                <?php endif; ?>
+                <?php if ($wm_enabled || $locked_count > 0): ?>
+                <option value="watermark_remove">Release: remove watermark from ticked</option>
+                <?php endif; ?>
                 <option value="delete">Delete ticked items</option>
             </select>
 
@@ -162,12 +199,15 @@ require_once __DIR__ . '/header.php';
 
         <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:1rem;">
             <?php foreach ($images as $image): ?>
-                <div style="position:relative;" id="f-<?= $collection_id ?>-<?= htmlspecialchars($image['stored_filename']) ?>" data-tag="<?= $image['tag_color'] ?>" data-note="<?= !empty($image['notes']) ? '1' : '0' ?>">
+                <div style="position:relative;" id="f-<?= $collection_id ?>-<?= htmlspecialchars($image['stored_filename']) ?>" data-tag="<?= $image['tag_color'] ?>" data-note="<?= !empty($image['notes']) ? '1' : '0' ?>"<?= (int)$image['watermark'] === 1 ? ' data-locked="1"' : '' ?>>
                     <input type="checkbox" name="ticked[]" value="<?= htmlspecialchars($image['stored_filename']) ?>"
                            class="thumb-checkbox<?= $image['tag_color'] !== 'none' ? ' tag-' . $image['tag_color'] : '' ?>"
                            style="position:absolute; top:8px; left:8px; width:20px; height:20px; z-index:1;">
                     <?php if (!empty($image['notes'])): ?>
                         <span class="has-note-badge" title="Has notes">&#9998;</span>
+                    <?php endif; ?>
+                    <?php if ((int)$image['watermark'] === 1): ?>
+                        <span class="lock-badge" title="Locked: customers see a watermarked preview" style="position:absolute; bottom:8px; right:8px; z-index:1; background:rgba(0,0,0,0.65); color:#fff; border-radius:4px; padding:0 6px; font-size:0.9rem;">🔒</span>
                     <?php endif; ?>
 
                     <?php if ($image['file_kind'] === 'image'): ?>
@@ -313,10 +353,10 @@ document.getElementById('select-all')?.addEventListener('change', function ()
     });
 });
 
-// Filter: click a colour, or "with notes", in the summary line to show
-// only matching tiles; click it again, or "Show all", to clear. Only one
-// filter is active at a time. Hidden tiles are unticked so they can't be
-// submitted with the form.
+// Filter: click a colour, "with notes", "locked" or "unlocked" in the
+// summary line to show only matching tiles; click it again, or "Show all",
+// to clear. Only one filter is active at a time. Hidden tiles are unticked
+// so they can't be submitted with the form.
 document.querySelectorAll('.tag-filter').forEach(function (link)
 {
     link.addEventListener('click', function (e)
@@ -347,6 +387,14 @@ document.querySelectorAll('.tag-filter').forEach(function (link)
             else if (filter === 'notes')
             {
                 show = (tile.dataset.note === '1');
+            }
+            else if (filter === 'locked')
+            {
+                show = (tile.dataset.locked === '1');
+            }
+            else if (filter === 'unlocked')
+            {
+                show = (tile.dataset.locked !== '1');
             }
             else
             {
@@ -408,6 +456,12 @@ document.getElementById('gallery-form')?.addEventListener('submit', function (e)
     }
 
     if (action === 'delete' && !confirm(`Delete ${ticked} selected item(s)? This cannot be undone.`))
+    {
+        e.preventDefault();
+        return;
+    }
+
+    if (action === 'watermark_remove' && !confirm(`Release ${ticked} selected item(s)? Customers will be able to view them in full size and download them.`))
     {
         e.preventDefault();
         return;
