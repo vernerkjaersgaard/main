@@ -83,7 +83,8 @@ if (!is_dir($thumbs_dir))
 // actually a foreign file — no point creating an empty folder for
 // collections that only ever receive images.
 
-$max_file_size = 80 * 1024 * 1024; // 80 MB, applies to both images and foreign files
+$max_image_size   = 80 * 1024 * 1024;     // images: unchanged
+$max_foreign_size = 1024 * 1024 * 1024;   // foreign files (PSD, TIFF, ...): 1 GB
 
 $file = $_FILES['image'];
 $original_name = $file['name'];
@@ -99,12 +100,12 @@ function respond_error($original_name, $message)
 
 if ($file['error'] !== UPLOAD_ERR_OK)
 {
-    respond_error($original_name, 'Upload failed (error code ' . $file['error'] . ').');
-}
+    if ($file['error'] === UPLOAD_ERR_INI_SIZE || $file['error'] === UPLOAD_ERR_FORM_SIZE)
+    {
+        respond_error($original_name, 'File is larger than the server allows.');
+    }
 
-if ($file['size'] > $max_file_size)
-{
-    respond_error($original_name, 'File is too large (max 80 MB).');
+    respond_error($original_name, 'Upload failed (error code ' . $file['error'] . ').');
 }
 
 $extension = strtolower(pathinfo($original_name, PATHINFO_EXTENSION));
@@ -122,6 +123,13 @@ if (!$filetype)
 
 $filetype_id = $filetype['filetype_id'];
 $file_kind = $filetype['file_kind'];
+
+$max_file_size = ($file_kind === 'image') ? $max_image_size : $max_foreign_size;
+
+if ($file['size'] > $max_file_size)
+{
+    respond_error($original_name, 'File is too large (max ' . format_bytes($max_file_size) . ' for this file type).');
+}
 
 // Should this upload start locked (a watermarked preview until released)?
 // Only when the administrator has switched watermarking on for this

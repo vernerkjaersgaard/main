@@ -243,6 +243,8 @@ document.getElementById('start-upload-btn')?.addEventListener('click', async fun
         return;
     }
 
+    const startBtn = this; // CHANGED: kept so it can be re-enabled after a failed batch
+
     this.disabled = true;
     fileInput.disabled = true;
 
@@ -292,9 +294,37 @@ document.getElementById('start-upload-btn')?.addEventListener('click', async fun
         overallProgress.value = i + 1;
     }
 
-    overallStatus.textContent = `Done: ${successCount} succeeded, ${failCount} failed. Reloading…`;
+    // CHANGED: reload only when everything succeeded. If anything failed,
+    // stay on the page so the messages can be read, and offer a button.
+    if (failCount === 0)
+    {
+        overallStatus.textContent = `Done: ${successCount} succeeded. Reloading…`;
 
-    setTimeout(() => window.location.reload(), 1200);
+        setTimeout(() => window.location.reload(), 1200);
+    }
+    else
+    {
+        overallStatus.textContent = `Done: ${successCount} succeeded, ${failCount} failed. See the list below.`;
+
+        // Allow another upload without reloading.
+        fileInput.value = '';
+        fileInput.disabled = false;
+        startBtn.disabled = false;
+
+        const oldBtn = document.getElementById('reload-after-upload');
+
+        if (oldBtn)
+        {
+            oldBtn.remove();
+        }
+
+        const reloadBtn = document.createElement('button');
+        reloadBtn.type = 'button';
+        reloadBtn.id = 'reload-after-upload';
+        reloadBtn.textContent = 'Show uploaded files';
+        reloadBtn.addEventListener('click', () => window.location.reload());
+        overallStatus.insertAdjacentElement('afterend', reloadBtn);
+    }
 });
 
 function uploadOneFile(file, listItem, collectionId)
