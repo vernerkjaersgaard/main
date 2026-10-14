@@ -15,7 +15,9 @@ require_once __DIR__ . '/header.php';
 
 <p>
     <a href="login.php" role="button">Log In</a>
-    <a href="register.php" role="button" class="secondary">Create Account</a>
+    <?php if (!function_exists('registration_is_open') || registration_is_open()): ?>
+        <a href="register.php" role="button" class="secondary">Create Account</a>
+    <?php endif; ?>
 </p>
 
 <?php require_once __DIR__ . '/footer.php'; ?>

@@ -91,7 +91,9 @@ $on_admin_page = (strpos(basename($_SERVER['SCRIPT_NAME']), 'admin') === 0);
 <?php else: ?>
 
     <li><a href="login.php">Log in</a></li>
+        <?php if (!function_exists('registration_is_open') || registration_is_open()): ?>
     <li><a href="register.php">Register</a></li>
+    <?php endif; ?>
 
 <?php endif; ?>
 </ul>

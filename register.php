@@ -2,6 +2,22 @@
 // register.php
 require_once __DIR__ . '/db.php';
 
+// CHANGED: registration switched off in config.php. Checked before anything
+// else, so neither the form nor a direct POST can create an account.
+if (!registration_is_open())
+{
+    http_response_code(403);
+    require_once __DIR__ . '/header.php';
+    ?>
+    <h1>Registration is closed</h1>
+    <p>New accounts cannot be created at the moment.</p>
+    <p><a href="login.php">Back to log in</a></p>
+    <?= render_info_notices($pdo) ?>
+    <?php
+    require_once __DIR__ . '/footer.php';
+    exit;
+}
+
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST')
@@ -70,7 +86,7 @@ require_once __DIR__ . '/header.php';
 <label>Password: <input type="password" name="password" required></label><br>
 <label>Confirm Password: <input type="password" name="password_confirm" required></label><br>
 <label>
-    <input type="checkbox" name="terms_accepted" value="1" <?= isset($_POST['terms_accepted']) ? 'checked' : '' ?> required>
+<input type="checkbox" name="terms_accepted" value="1" <?= isset($_POST['terms_accepted']) ? 'checked' : '' ?> required>
     I have read and accept the <a href="terms.php" target="_blank">Terms of Use</a>
 </label><br>
 <button type="submit">Register</button>

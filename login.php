@@ -53,6 +53,10 @@ require_once __DIR__ . '/header.php';
 <button type="submit">Log In</button>
 </form>
 
+<?php if (registration_is_open()): /* CHANGED: link only shown while registration is open */ ?>
 <p>Don't have an account? <a href="register.php">Register</a></p>
+<?php endif; ?>
+
+<?= render_info_notices($pdo) /* CHANGED: notices from tb_info, just above the footer */ ?>
 
 <?php require_once __DIR__ . '/footer.php'; ?>

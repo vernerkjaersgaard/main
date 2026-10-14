@@ -337,3 +337,13 @@ table.zebra tbody tr:hover td
 {
     background-color: rgba(122, 201, 208, 0.35);
 }
+
+.info-notice {
+    background: #fff8e1;
+    color: #333;
+    border-left: 4px solid #f0b400;
+    border-radius: 4px;
+    padding: 0.6rem 0.9rem;
+    margin: 0.75rem 0;
+    font-size: 0.95rem;
+}
