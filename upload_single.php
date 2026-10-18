@@ -146,8 +146,8 @@ if (is_file($watermark_helper))
 }
 
 // Collision-safe stored filename — same logic regardless of file kind
-$safe_base = str_replace(' ', '_', pathinfo($original_name, PATHINFO_FILENAME));
-$safe_base = preg_replace('/[^a-zA-Z0-9_-]/', '_', $safe_base);
+$safe_base = safe_filename_base(pathinfo($original_name, PATHINFO_FILENAME));
+
 $stored_filename = $safe_base . '.' . $extension;
 $counter = 1;
 

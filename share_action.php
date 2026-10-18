@@ -63,7 +63,7 @@ if (empty($candidate_files))
 // locked previews (1) and which are released (0).
 $placeholders = implode(',', array_fill(0, count($candidate_files), '?'));
 $stmt = $pdo->prepare("
-    SELECT i.image_id, i.stored_filename, i.watermark, aft.file_kind, aft.extension
+    SELECT i.image_id, i.stored_filename, i.original_filename, i.watermark, aft.file_kind, aft.extension
     FROM tb_images i
     JOIN tb_allowed_filetypes aft ON aft.filetype_id = i.filetype_id
     WHERE i.collection_id = ? AND i.status = 'complete' AND i.stored_filename IN ($placeholders)
@@ -165,11 +165,12 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
     $chunks = array_chunk($downloadable, 70);
     $tokens = [];
 
-    foreach ($chunks as $chunk)
+        foreach ($chunks as $chunk)
     {
         $zip_token = bin2hex(random_bytes(16));
         $zip_path = $batch_temp_dir . '/' . $zip_token . '.zip';
         $temp_files_to_clean = [];
+        $used_names = []; // CHANGED: names already used inside this zip
 
         $zip = new ZipArchive();
         $zip->open($zip_path, ZipArchive::CREATE);
@@ -177,6 +178,11 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
         foreach ($chunk as $item)
         {
             $filename = $item['stored_filename'];
+
+            // CHANGED: the name inside the zip is the original file name
+            // (made safe and unique). The file is still read from disk
+            // under its stored name.
+            $entry_name = unique_zip_entry_name($item['original_filename'], $filename, $used_names);
 
             // Foreign files are never resized, added as-is regardless
             // of the requested size tier.
@@ -186,7 +192,7 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
 
                 if (is_file($source_path))
                 {
-                    $zip->addFile($source_path, $filename);
+                    $zip->addFile($source_path, $entry_name); // CHANGED
                 }
 
                 continue;
@@ -201,7 +207,7 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
 
             if ($action === 'download_full')
             {
-                $zip->addFile($source_path, $filename);
+                $zip->addFile($source_path, $entry_name); // CHANGED
             }
             else
             {
@@ -214,7 +220,7 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
                 $tmp_resized = tempnam(sys_get_temp_dir(), 'resize_') . '.jpg';
                 $resized->save($tmp_resized);
 
-                $zip->addFile($tmp_resized, $filename);
+                $zip->addFile($tmp_resized, $entry_name); // CHANGED
                 $temp_files_to_clean[] = $tmp_resized;
             }
         }
