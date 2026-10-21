@@ -107,12 +107,16 @@ if ($current_index === false)
 $prev_file = ($current_index > 0) ? $images[$current_index - 1] : null;
 $next_file = ($current_index < count($images) - 1) ? $images[$current_index + 1] : null;
 
-// The notes, and whether this image is a locked (watermarked) preview.
-$stmt = $pdo->prepare("SELECT notes, watermark FROM tb_images WHERE collection_id = ? AND stored_filename = ?");
+// The notes, whether this image is a locked (watermarked) preview, and
+// (CHANGED) its original file name, shown under the image.
+$stmt = $pdo->prepare("SELECT notes, watermark, original_filename FROM tb_images WHERE collection_id = ? AND stored_filename = ?");
 $stmt->execute([$collection_id, $safe_current]);
 $current_row = $stmt->fetch();
 
 $current_notes = $current_row ? $current_row['notes'] : false;
+
+// CHANGED: the name to show; falls back to the stored name if none is saved.
+$display_name = (($current_row['original_filename'] ?? '') !== '') ? $current_row['original_filename'] : $safe_current;
 
 // A locked image is shown as a watermarked preview only, with no full-size
 // link (share_image.php refuses full size for it anyway). When in doubt
@@ -157,9 +161,11 @@ if (is_file($branding_file))
 
 <div class="share-viewer-bg">
     <img src="share_image.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection_id ?>&file=<?= urlencode($safe_current) ?>&size=medium"
-         alt="<?= htmlspecialchars($safe_current) ?>"
+         alt="<?= htmlspecialchars($display_name) ?>"
          class="share-full-image">
     <p>
+        <span class="image-filename"><?= htmlspecialchars($display_name) ?></span>
+        &nbsp;|&nbsp;
 <?php if (!$is_locked): ?>
         <a href="share_image.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection_id ?>&file=<?= urlencode($safe_current) ?>&size=full" target="_blank">
             View full resolution

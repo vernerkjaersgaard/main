@@ -94,9 +94,12 @@ if ($current_index === false)
 $prev_file = ($current_index > 0) ? $images[$current_index - 1] : null;
 $next_file = ($current_index < count($images) - 1) ? $images[$current_index + 1] : null;
 
-$stmt = $pdo->prepare("SELECT notes FROM tb_images WHERE collection_id = ? AND stored_filename = ?");
+// CHANGED: also fetch the original file name, to show under the image.
+$stmt = $pdo->prepare("SELECT notes, original_filename FROM tb_images WHERE collection_id = ? AND stored_filename = ?");
 $stmt->execute([$collection_id, $safe_current]);
-$current_notes = $stmt->fetchColumn();
+$current_row = $stmt->fetch();
+$current_notes = $current_row['notes'] ?? null;
+$display_name = (($current_row['original_filename'] ?? '') !== '') ? $current_row['original_filename'] : $safe_current;
 
 require_once __DIR__ . '/header.php';
 ?>
@@ -108,9 +111,11 @@ require_once __DIR__ . '/header.php';
 
 <div style="text-align:center;">
     <img src="image.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($safe_current) ?>&size=medium"
-         alt="<?= htmlspecialchars($safe_current) ?>"
+         alt="<?= htmlspecialchars($display_name) ?>"
          class="full-image">
     <p>
+        <span class="image-filename"><?= htmlspecialchars($display_name) ?></span>
+        &nbsp;|&nbsp;
         <a href="image.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($safe_current) ?>&size=full" target="_blank">
             View full resolution
         </a>

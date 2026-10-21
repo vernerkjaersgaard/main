@@ -347,3 +347,15 @@ table.zebra tbody tr:hover td
     margin: 0.75rem 0;
     font-size: 0.95rem;
 }
+
+/* File name shown under the image in the viewers */
+.image-filename {
+    color: inherit;      /* normal text colour of the page (follows light/dark mode) */
+    font-weight: 600;
+    word-break: break-word;
+}
+
+/* The customer viewer sits on a dark band: always light text there */
+.share-viewer-bg .image-filename {
+    color: #fff;
+}
