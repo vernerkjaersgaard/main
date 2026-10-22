@@ -57,6 +57,7 @@ if (!is_file($path))
 }
 
 log_action($pdo, $_SESSION['user_id'], 'download_file', $collection['project_id'], $collection_id, $image_row['original_filename']);
+usage_add($pdo, (int)$_SESSION['user_id'], 'download', (int)filesize($path));
 
 $mime_type = mime_content_type($path) ?: 'application/octet-stream';
 

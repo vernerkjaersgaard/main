@@ -204,6 +204,7 @@ if ($file_kind === 'image')
         $update->execute([$image_id]);
 
         log_action($pdo, $_SESSION['user_id'], 'upload', $collection['project_id'], $collection_id, $original_name);
+        usage_add($pdo, (int)$_SESSION['user_id'], 'upload', (int)$file['size']);
 
         echo json_encode(['ok' => true, 'original_filename' => $original_name, 'stored_filename' => $stored_filename]);
         exit;
@@ -238,6 +239,7 @@ $update = $pdo->prepare("UPDATE tb_images SET status = 'complete' WHERE image_id
 $update->execute([$image_id]);
 
 log_action($pdo, $_SESSION['user_id'], 'upload_file', $collection['project_id'], $collection_id, $original_name);
+usage_add($pdo, (int)$_SESSION['user_id'], 'upload', (int)$file['size']);
 
 echo json_encode(['ok' => true, 'original_filename' => $original_name, 'stored_filename' => $stored_filename]);
 exit;

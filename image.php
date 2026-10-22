@@ -113,5 +113,10 @@ header('Content-Type: ' . $mime_type);
 header('Content-Length: ' . filesize($path));
 header('Cache-Control: private, max-age=3600');
 
+if ($size === 'full')
+{
+    usage_add($pdo, (int)$_SESSION['user_id'], 'download', (int)filesize($path));
+}
+
 readfile($path);
 exit;

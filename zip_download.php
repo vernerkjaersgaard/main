@@ -37,6 +37,8 @@ header('Content-Type: application/zip');
 header('Content-Disposition: attachment; filename="' . $download_filename . '"');
 header('Content-Length: ' . filesize($zip_path));
 
+usage_add($pdo, (int)$_SESSION['user_id'], 'download', (int)filesize($zip_path));
+
 readfile($zip_path);
 
 if (!connection_aborted())

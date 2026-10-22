@@ -17,9 +17,10 @@ if (!preg_match('/^[a-f0-9]{64}$/', $token))
 // A project-level link has sl.collection_id = NULL and matches every
 // collection in its project, as before.
 $stmt = $pdo->prepare("
-    SELECT sl.ttl_days, sl.created_at, sl.project_id, c.storage_path
+    SELECT sl.ttl_days, sl.created_at, sl.project_id, c.storage_path, p.user_id AS owner_id
     FROM tb_share_links sl
     JOIN tb_collections c ON c.project_id = sl.project_id
+    JOIN tb_projects p ON p.project_id = sl.project_id
     WHERE sl.token = ? AND sl.revoked_at IS NULL AND c.collection_id = ?
       AND (sl.collection_id IS NULL OR sl.collection_id = c.collection_id)
 ");
@@ -80,6 +81,7 @@ if (!is_file($path))
 }
 
 log_action($pdo, null, 'share_download_file', $result['project_id'], $collection_id, $image_row['original_filename']);
+usage_add($pdo, (int)$result['owner_id'], 'share_download', (int)filesize($path));
 
 $mime_type = mime_content_type($path) ?: 'application/octet-stream';
 

@@ -20,9 +20,10 @@ if (!preg_match('/^[a-f0-9]{64}$/', $token))
 // sl.project_id is fetched so a locked image's watermark settings can be
 // found below.
 $stmt = $pdo->prepare("
-    SELECT sl.ttl_days, sl.created_at, sl.project_id, c.storage_path
+    SELECT sl.ttl_days, sl.created_at, sl.project_id, c.storage_path, p.user_id AS owner_id
     FROM tb_share_links sl
     JOIN tb_collections c ON c.project_id = sl.project_id
+    JOIN tb_projects p ON p.project_id = sl.project_id
     WHERE sl.token = ? AND sl.revoked_at IS NULL AND c.collection_id = ?
     AND (sl.collection_id IS NULL OR sl.collection_id = c.collection_id)
 ");
@@ -182,6 +183,11 @@ if (!str_starts_with($mime_type, 'image/'))
 header('Content-Type: ' . $mime_type);
 header('Content-Length: ' . filesize($path));
 header('Cache-Control: private, max-age=3600');
+
+if ($size === 'full')
+{
+    usage_add($pdo, (int)$result['owner_id'], 'share_download', (int)filesize($path));
+}
 
 readfile($path);
 exit;
