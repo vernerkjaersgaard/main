@@ -16,10 +16,10 @@ if (!preg_match('/^[a-f0-9]{64}$/', $token))
 }
 
 $stmt = $pdo->prepare("
-    SELECT user_id FROM tb_users
+    SELECT user_id, username, email FROM tb_users
     WHERE reset_token = ? AND reset_token_expires_at > NOW()
 ");
-$stmt->execute([$token]);
+$stmt->execute([hash('sha256', $token)]);
 $user = $stmt->fetch();
 
 if (!$user)
@@ -47,9 +47,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     {
         $error = 'Passwords do not match.';
     }
-    elseif (strlen($password) < 8)
+    elseif (($policy_error = password_policy_error($password, $user['username'], $user['email'])) !== null)
     {
-        $error = 'Password must be at least 8 characters.';
+        $error = $policy_error;
     }
     else
     {
@@ -86,8 +86,9 @@ require_once __DIR__ . '/header.php';
 
     <form method="post">
         <input type="hidden" name="token" value="<?= htmlspecialchars($token) ?>">
-        <label>New Password: <input type="password" name="password" required></label><br>
-        <label>Confirm New Password: <input type="password" name="password_confirm" required></label><br>
+        <label>New Password: <input type="password" name="password" minlength="12" autocomplete="new-password" required></label><br>
+        <small>At least 12 characters. A short sentence is fine, and no special characters are needed.</small><br>
+        <label>Confirm New Password: <input type="password" name="password_confirm" minlength="12" autocomplete="new-password" required></label><br>
         <button type="submit">Reset Password</button>
     </form>
 

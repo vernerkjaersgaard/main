@@ -85,7 +85,7 @@ $on_admin_page = (strpos(basename($_SERVER['SCRIPT_NAME']), 'admin') === 0);
     <?php if (!empty($_SESSION['is_admin'])): ?>
         <li><a href="admin.php">Admin</a></li>
     <?php endif; ?>
-    <li><?= htmlspecialchars($_SESSION['username']) ?></li>
+    <li><a href="change_password.php" title="Change password"><?= htmlspecialchars($_SESSION['username']) ?></a></li>
     <li><a href="logout.php">Log out</a></li>
 
 <?php else: ?>
@@ -99,3 +99,7 @@ $on_admin_page = (strpos(basename($_SERVER['SCRIPT_NAME']), 'admin') === 0);
 </ul>
 </nav>
 <main class="container">
+
+<?php if (!empty($_SESSION['password_weak']) && basename($_SERVER['SCRIPT_NAME']) !== 'change_password.php'): ?>
+<p class="info-notice">Your password no longer meets our requirements (at least 12 characters, not a common password). <a href="change_password.php">Please choose a new one</a>.</p>
+<?php endif; ?>

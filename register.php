@@ -40,9 +40,9 @@ elseif ($password !== $password_confirm)
     {
         $error = 'Passwords do not match.';
     }
-elseif (strlen($password) < 8)
+elseif (($policy_error = password_policy_error($password, $username, $email)) !== null)
     {
-        $error = 'Password must be at least 8 characters.';
+        $error = $policy_error;
     }
 else
     {
@@ -83,8 +83,9 @@ require_once __DIR__ . '/header.php';
 <form method="post">
 <label>Email: <input type="email" name="email" value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required></label><br>
 <label>Username: <input type="text" name="username" value="<?= htmlspecialchars($_POST['username'] ?? '') ?>" required></label><br>
-<label>Password: <input type="password" name="password" required></label><br>
-<label>Confirm Password: <input type="password" name="password_confirm" required></label><br>
+<label>Password: <input type="password" name="password" minlength="12" autocomplete="new-password" required></label><br>
+<small>At least 12 characters. A short sentence is fine, and no special characters are needed.</small><br>
+<label>Confirm Password: <input type="password" name="password_confirm" minlength="12" autocomplete="new-password" required></label><br>
 <label>
 <input type="checkbox" name="terms_accepted" value="1" <?= isset($_POST['terms_accepted']) ? 'checked' : '' ?> required>
     I have read and accept the <a href="terms.php" target="_blank">Terms of Use</a>
