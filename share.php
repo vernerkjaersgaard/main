@@ -102,13 +102,79 @@ if (is_file($branding_file))
 <p><a href="mailto:<?= htmlspecialchars($contact_email) ?>">Email the photographer</a></p>
 
 <?php if (count($collections) > 1): ?>
-    <nav aria-label="Collections">
-        <ul>
-            <?php foreach ($collections as $collection): ?>
-                <li><a href="#collection-<?= $collection['collection_id'] ?>"><?= htmlspecialchars($collection['collection_name']) ?></a></li>
+    <?php
+    // One tile per collection: cover picture, name and a count. The counts
+    // and the cover come from the same completed files the gallery shows.
+    $count_stmt = $pdo->prepare("
+        SELECT COALESCE(SUM(aft.file_kind = 'image'), 0) AS image_count,
+               COALESCE(SUM(aft.file_kind <> 'image'), 0) AS file_count
+        FROM tb_images i
+        JOIN tb_allowed_filetypes aft ON aft.filetype_id = i.filetype_id
+        WHERE i.collection_id = ? AND i.status = 'complete'
+    ");
+    $cover_stmt = $pdo->prepare("
+        SELECT i.stored_filename
+        FROM tb_images i
+        JOIN tb_allowed_filetypes aft ON aft.filetype_id = i.filetype_id
+        WHERE i.collection_id = ? AND i.status = 'complete' AND aft.file_kind = 'image'
+        ORDER BY i.original_filename
+        LIMIT 1
+    ");
+
+    $tiles = [];
+
+    foreach ($collections as $collection)
+    {
+        $count_stmt->execute([$collection['collection_id']]);
+        $counts = $count_stmt->fetch();
+
+        $cover_stmt->execute([$collection['collection_id']]);
+        $cover_file = $cover_stmt->fetchColumn();
+
+        $n_images = (int)$counts['image_count'];
+        $n_files  = (int)$counts['file_count'];
+
+        $parts = [];
+
+        if ($n_images > 0)
+        {
+            $parts[] = $n_images . ($n_images === 1 ? ' image' : ' images');
+        }
+
+        if ($n_files > 0)
+        {
+            $parts[] = $n_files . ($n_files === 1 ? ' file' : ' files');
+        }
+
+        $tiles[] = [
+            'id'    => $collection['collection_id'],
+            'name'  => $collection['collection_name'],
+            'cover' => $cover_file,
+            'count' => empty($parts) ? 'Nothing added yet' : implode(', ', $parts),
+        ];
+    }
+    ?>
+    <section id="collections" aria-label="Collections">
+        <p class="collection-intro">This delivery contains <strong><?= count($tiles) ?> collections</strong>. Click one to jump to its pictures further down this page.</p>
+        <div class="collection-tiles">
+            <?php foreach ($tiles as $tile): ?>
+                <a class="collection-tile" href="#collection-<?= (int)$tile['id'] ?>">
+                    <div class="collection-tile-cover">
+                        <?php if ($tile['cover'] !== false && $tile['cover'] !== null): ?>
+                            <img src="share_image.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= (int)$tile['id'] ?>&file=<?= urlencode($tile['cover']) ?>&size=thumb" alt="" loading="lazy">
+                        <?php else: ?>
+                            <span aria-hidden="true">&#128196;</span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="collection-tile-body">
+                        <p class="collection-tile-name"><?= htmlspecialchars($tile['name']) ?></p>
+                        <p class="collection-tile-count"><?= htmlspecialchars($tile['count']) ?></p>
+                        <span class="collection-tile-go">View &darr;</span>
+                    </div>
+                </a>
             <?php endforeach; ?>
-        </ul>
-    </nav>
+        </div>
+    </section>
     <hr>
 <?php endif; ?>
 
@@ -137,7 +203,7 @@ if (is_file($branding_file))
 
     <?php foreach ($collections as $collection): ?>
         <?php if (!$is_scoped): ?>
-            <h2 id="collection-<?= $collection['collection_id'] ?>"><?= htmlspecialchars($collection['collection_name']) ?></h2>
+            <h2 id="collection-<?= $collection['collection_id'] ?>"><?= htmlspecialchars($collection['collection_name']) ?><?php if (count($collections) > 1): ?> <a class="back-to-collections" href="#collections">&uarr; All collections</a><?php endif; ?></h2>
         <?php endif; ?>
 
         <?php
@@ -208,7 +274,7 @@ if (is_file($branding_file))
                 <input type="hidden" name="token" value="<?= htmlspecialchars($token) ?>">
                 <input type="hidden" name="collection_id" value="<?= $collection['collection_id'] ?>">
 
-                <div style="margin-bottom:1rem; display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+                    <div class="action-bar">
                     <label style="display:inline-flex; align-items:center; gap:0.5rem; width:auto;">
                         <input type="checkbox" class="select-all-cb">
                         Select all
@@ -384,6 +450,11 @@ document.querySelectorAll('.action-select').forEach(function (actionSelect)
     actionSelect.addEventListener('change', function ()
     {
         const colorSelect = this.closest('.tag-form').querySelector('.tag-color-select');
+        const applyButton = this.closest('.tag-form').querySelector('.action-bar button[type="submit"]');
+
+        // A pulsing Apply button reminds the visitor that choosing an action
+        // does nothing until Apply is clicked.
+        applyButton.classList.toggle('needs-apply', this.value !== '');
 
         if (this.value === 'tag')
         {

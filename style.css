@@ -359,3 +359,156 @@ table.zebra tbody tr:hover td
 .share-viewer-bg .image-filename {
     color: #fff;
 }
+
+/* Collection tiles on the share page */
+.collection-intro
+{
+    margin-bottom: 1rem;
+}
+
+.collection-tiles
+{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.collection-tile
+{
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    border: 1px solid var(--pico-muted-border-color, #dfe3ea);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--pico-card-background-color, transparent);
+}
+
+.collection-tile:hover,
+.collection-tile:focus-visible
+{
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+    outline: 2px solid var(--pico-primary, #2f6fed);
+}
+
+.collection-tile-cover
+{
+    height: 150px;
+    background: rgba(128, 128, 128, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+}
+
+.collection-tile-cover img
+{
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.collection-tile-body
+{
+    padding: 0.75rem 0.9rem;
+}
+
+.collection-tile-name
+{
+    font-weight: 700;
+    margin: 0;
+    word-break: break-word;
+}
+
+.collection-tile-count
+{
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--pico-muted-color, #5d6676);
+}
+
+.collection-tile-go
+{
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--pico-primary, #2f6fed);
+}
+
+.back-to-collections
+{
+    font-size: 0.9rem;
+    font-weight: 400;
+    margin-left: 0.75rem;
+}
+
+/* Action bar on the share page: action dropdown and Apply on one line */
+.action-bar
+{
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.action-bar > *
+{
+    margin-bottom: 0;
+}
+
+.action-bar .action-select
+{
+    width: 25%;
+    min-width: 18rem;
+}
+
+.action-bar .tag-color-select
+{
+    width: 20%;
+    min-width: 10rem;
+}
+
+.action-bar button[type="submit"]
+{
+    width: 25%;
+    min-width: 8rem;
+}
+
+@media (max-width: 640px)
+{
+    .action-bar .action-select,
+    .action-bar .tag-color-select,
+    .action-bar button[type="submit"]
+    {
+        width: 100%;
+    }
+}
+
+.action-bar button.needs-apply
+{
+    animation: apply-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes apply-pulse
+{
+    0%, 100%
+    {
+        box-shadow: 0 0 0 0 rgba(47, 111, 237, 0.55);
+    }
+
+    50%
+    {
+        box-shadow: 0 0 0 8px rgba(47, 111, 237, 0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce)
+{
+    .action-bar button.needs-apply
+    {
+        animation: none;
+        outline: 3px solid rgba(47, 111, 237, 0.7);
+    }
+}

@@ -163,13 +163,13 @@ require_once __DIR__ . '/header.php';
     <form method="post" action="gallery_action.php" id="gallery-form">
         <input type="hidden" name="collection_id" value="<?= $collection_id ?>">
 
-        <div style="margin-bottom:1rem; display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+            <div class="action-bar">
             <label style="display:inline-flex; align-items:center; gap:0.5rem; width:auto;">
                 <input type="checkbox" id="select-all">
                 Select all
             </label>
 
-            <select name="gallery_action" id="action-select" required>
+                <select name="gallery_action" id="action-select" class="action-select" required>
                 <option value="">Choose an action&hellip;</option>
                 <option value="tag">Set color tag&hellip;</option>
                 <option value="download_full">Download full size (zip)</option>
@@ -184,7 +184,7 @@ require_once __DIR__ . '/header.php';
                 <option value="delete">Delete ticked items</option>
             </select>
 
-            <select name="tag_color" id="tag-color-select" style="display:none;">
+                <select name="tag_color" id="tag-color-select" class="tag-color-select" style="display:none;">
                 <option value="">Color&hellip;</option>
                 <option value="red">🔴 Red</option>
                 <option value="green">🟢 Green</option>
@@ -453,6 +453,10 @@ const tagColorSelect = document.getElementById('tag-color-select');
 
 actionSelect?.addEventListener('change', function ()
 {
+    // A pulsing Apply button reminds that choosing an action does nothing
+    // until Apply is clicked.
+    document.getElementById('apply-btn').classList.toggle('needs-apply', this.value !== '');
+
     if (this.value === 'tag')
     {
         tagColorSelect.style.display = 'inline-block';
