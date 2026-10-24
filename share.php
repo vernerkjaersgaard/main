@@ -121,6 +121,10 @@ if (is_file($branding_file))
         LIMIT 1
     ");
 
+    // Cover pictures on the tiles are switched off (they took up too much
+    // room). Set this to true to bring them back.
+    $show_tile_covers = false;
+
     $tiles = [];
 
     foreach ($collections as $collection)
@@ -128,8 +132,13 @@ if (is_file($branding_file))
         $count_stmt->execute([$collection['collection_id']]);
         $counts = $count_stmt->fetch();
 
-        $cover_stmt->execute([$collection['collection_id']]);
-        $cover_file = $cover_stmt->fetchColumn();
+        $cover_file = false;
+
+        if ($show_tile_covers)
+        {
+            $cover_stmt->execute([$collection['collection_id']]);
+            $cover_file = $cover_stmt->fetchColumn();
+        }
 
         $n_images = (int)$counts['image_count'];
         $n_files  = (int)$counts['file_count'];
@@ -159,6 +168,7 @@ if (is_file($branding_file))
         <div class="collection-tiles">
             <?php foreach ($tiles as $tile): ?>
                 <a class="collection-tile" href="#collection-<?= (int)$tile['id'] ?>">
+                    <?php if ($show_tile_covers): ?>
                     <div class="collection-tile-cover">
                         <?php if ($tile['cover'] !== false && $tile['cover'] !== null): ?>
                             <img src="share_image.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= (int)$tile['id'] ?>&file=<?= urlencode($tile['cover']) ?>&size=thumb" alt="" loading="lazy">
@@ -166,6 +176,7 @@ if (is_file($branding_file))
                             <span aria-hidden="true">&#128196;</span>
                         <?php endif; ?>
                     </div>
+                    <?php endif; ?>
                     <div class="collection-tile-body">
                         <p class="collection-tile-name"><?= htmlspecialchars($tile['name']) ?></p>
                         <p class="collection-tile-count"><?= htmlspecialchars($tile['count']) ?></p>
