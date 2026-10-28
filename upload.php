@@ -211,7 +211,7 @@ require_once __DIR__ . '/header.php';
                     <?php endif; ?>
 
                     <?php if ($image['file_kind'] === 'image'): ?>
-                        <a href="view.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($image['stored_filename']) ?>" target="_blank">
+                        <a href="view.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($image['stored_filename']) ?>">
                             <img src="image.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($image['stored_filename']) ?>&size=thumb"
                                  alt="<?= htmlspecialchars($image['original_filename']) ?>"
                                  class="thumbnail">

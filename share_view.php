@@ -167,7 +167,7 @@ if (is_file($branding_file))
         <span class="image-filename"><?= htmlspecialchars($display_name) ?></span>
         &nbsp;|&nbsp;
 <?php if (!$is_locked): ?>
-        <a href="share_image.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection_id ?>&file=<?= urlencode($safe_current) ?>&size=full" target="_blank">
+        <a href="share_image.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection_id ?>&file=<?= urlencode($safe_current) ?>&size=full">
             View full resolution
         </a>
         &nbsp;|&nbsp;

@@ -217,6 +217,8 @@ require_once __DIR__ . '/header.php';
 
 <p>This is what the people you share galleries with will see. Leave anything empty to keep the standard look.</p>
 
+<p><a href="branding_terms.php">Terms of use for your customers &rarr;</a></p>
+
 <?php if (isset($_GET['saved'])): ?>
     <p style="color:green;">Branding saved.</p>
 <?php endif; ?>

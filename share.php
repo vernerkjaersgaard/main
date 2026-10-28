@@ -67,6 +67,7 @@ $brand_style   = '';
 $brand_header  = '';
 $brand_welcome = '';
 $contact_email = $share['photographer_email'];
+$terms_link    = '';
 
 $branding_file = dirname(__DIR__) . '/branding_functions.php';
 
@@ -79,6 +80,7 @@ if (is_file($branding_file))
     $brand_header  = branding_header_html($brand, $token);
     $brand_welcome = branding_welcome_html($brand);
     $contact_email = branding_contact_email($brand, $share['photographer_email']);
+    $terms_link    = branding_terms_link_html($pdo, $share['project_id'], $token);
 }
 ?>
 <!DOCTYPE html>
@@ -99,7 +101,7 @@ if (is_file($branding_file))
 <h1><?= htmlspecialchars($page_heading) ?></h1>
 
 <?= $brand_welcome ?>
-<p><a href="mailto:<?= htmlspecialchars($contact_email) ?>">Email the photographer</a></p>
+<p><a href="mailto:<?= htmlspecialchars($contact_email) ?>">Email the photographer</a><?= $terms_link ?></p>
 
 <?php if (count($collections) > 1): ?>
     <?php
@@ -328,7 +330,7 @@ if (is_file($branding_file))
 <?php endif; ?>
 
                             <?php if ($image['file_kind'] === 'image'): ?>
-                                <a href="share_view.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection['collection_id'] ?>&file=<?= urlencode($image['stored_filename']) ?>" target="_blank">
+                                <a href="share_view.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection['collection_id'] ?>&file=<?= urlencode($image['stored_filename']) ?>">
                                     <img src="share_image.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection['collection_id'] ?>&file=<?= urlencode($image['stored_filename']) ?>&size=thumb"
                                          alt="<?= htmlspecialchars($image['original_filename']) ?>"
                                          class="thumbnail">

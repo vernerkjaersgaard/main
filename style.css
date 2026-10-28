@@ -512,3 +512,8 @@ table.zebra tbody tr:hover td
         outline: 3px solid rgba(47, 111, 237, 0.7);
     }
 }
+
+   .brand-terms
+   {
+       max-width: 70ch;
+   }
