@@ -253,6 +253,20 @@ if (is_file($branding_file))
         // Everything in this collection is locked: nothing can be
         // downloaded, so the download options are not offered at all.
         $all_locked = (count($images) > 0 && $locked_count === count($images));
+
+        // First viewable image of this collection, in the same order as the
+        // grid: where the "Full screen view" button starts. Foreign files
+        // (PSD, ZIP, ...) are skipped; if there are none, there is no button.
+        $first_image = null;
+
+        foreach ($images as $image)
+        {
+            if ($image['file_kind'] === 'image')
+            {
+                $first_image = $image['stored_filename'];
+                break;
+            }
+        }
         ?>
 
         <?php if (empty($images)): ?>
@@ -313,7 +327,10 @@ if (is_file($branding_file))
                         <option value="none">⚪ Clear tag</option>
                     </select>
 
-                <button type="submit">Apply</button>
+                    <button type="submit">Apply</button>
+                    <?php if ($first_image !== null): ?>
+                        <a href="share_fullscreen.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection['collection_id'] ?>&file=<?= urlencode($first_image) ?>" role="button" class="secondary outline fullscreen-button">Full screen view</a>
+                    <?php endif; ?>
                 </div>
 
                 <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:1rem; margin-bottom:2rem;">

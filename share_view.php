@@ -157,7 +157,7 @@ if (is_file($branding_file))
 
 <p><a href="share.php?token=<?= htmlspecialchars($token) ?>#f-<?= $collection_id ?>-<?= htmlspecialchars($safe_current) ?>">&larr; Back to gallery</a></p>
 
-<p>Image <?= $current_index + 1 ?> of <?= count($images) ?></p>
+<p>Image <?= $current_index + 1 ?> of <?= count($images) ?> &nbsp;|&nbsp; <a href="share_fullscreen.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection_id ?>&file=<?= urlencode($safe_current) ?>">Full screen view</a></p>
 
 <div class="share-viewer-bg">
     <img src="share_image.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection_id ?>&file=<?= urlencode($safe_current) ?>&size=medium"

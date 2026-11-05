@@ -9,7 +9,7 @@
 --pico-primary-hover: #F5906F;        /* Cantaloupe Orange */
 --pico-primary-background: #7AC9D0;   /* Pale Teal */
 --pico-primary-underline: #7AC9D0;    /* Pale Teal */
---pico-background-color: #dedeec;
+--pico-background-color: #f0f0f0;     /* #dedeec   */
 }
 
 
@@ -17,7 +17,7 @@
 .thumbnail
 {
     width: 100%;
-    border-radius: 6px;
+    border-radius: 4px;
     border: 1px solid var(--pico-primary);
     display: block;
 }
@@ -31,7 +31,7 @@
 {
     max-width: 100%;
     max-height: 80vh;
-    border-radius: 8px;
+    border-radius: 6px;
     border: 1px solid var(--pico-primary);
     display: block;
     margin: 0 auto;
@@ -99,7 +99,7 @@
     background-color: #1a1a1a;
     background-color: #555555;
     padding: 2rem;
-    border-radius: 8px;
+    border-radius: 6px;
     text-align: center;
 }
 
@@ -517,3 +517,36 @@ table.zebra tbody tr:hover td
    {
        max-width: 70ch;
    }
+
+/* Full screen view button, next to Apply in the action bar */
+.action-bar .fullscreen-button
+{
+    width: auto;
+    white-space: nowrap;
+    text-align: center;
+}
+
+@media (max-width: 640px)
+{
+    .action-bar .fullscreen-button
+    {
+        width: 100%;
+    }
+}
+
+/* Full screen view button: a light tint of the Apply colour, with a border and text in that colour */
+.action-bar a.fullscreen-button[role="button"]
+{
+    background-color: color-mix(in srgb, var(--pico-primary-background) 16%, Canvas);
+    border-color: color-mix(in srgb, var(--pico-primary-background) 60%, Canvas);
+    color: var(--pico-primary-background);
+    font-weight: 600;
+}
+
+.action-bar a.fullscreen-button[role="button"]:hover,
+.action-bar a.fullscreen-button[role="button"]:focus
+{
+    background-color: color-mix(in srgb, var(--pico-primary-background) 28%, Canvas);
+    border-color: var(--pico-primary-background);
+    color: var(--pico-primary-background);
+}
