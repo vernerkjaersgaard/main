@@ -125,7 +125,7 @@ Storage used: <?= format_bytes($my_usage_bytes) ?>
 <td><?= htmlspecialchars($project['date_of_creation']) ?></td>
 <td><a href="share_manage.php?project_id=<?= (int)$project['project_id'] ?>">Share</a></td>
 <td>
-<form method="post" action="delete_project.php" onsubmit="return confirm('Delete the ENTIRE project &quot;<?= htmlspecialchars($project['project_name'], ENT_QUOTES) ?>&quot;, including ALL its collections and images? This cannot be undone.');" style="display:inline;">
+<form method="post" action="delete_project.php" data-name="<?= htmlspecialchars($project['project_name'], ENT_QUOTES) ?>" onsubmit="return confirm('Delete the ENTIRE project &quot;' + this.dataset.name + '&quot;, including ALL its collections and images? This cannot be undone.');" style="display:inline;">
 <input type="hidden" name="project_id" value="<?= (int)$project['project_id'] ?>">
 <button type="submit" class="secondary">Delete</button>
 </form>

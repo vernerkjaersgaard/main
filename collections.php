@@ -96,7 +96,8 @@ require_once __DIR__ . '/header.php';
 <a href="share_manage.php?project_id=<?= $project_id ?>&collection_id=<?= (int)$collection['collection_id'] ?>" role="button" class="secondary">Share</a>
 </td>
 <td>
-<form method="post" action="delete_collection.php" onsubmit="return confirm('Delete the collection &quot;<?= htmlspecialchars($collection['collection_name'], ENT_QUOTES) ?>&quot; and all its images? This cannot be undone.');" style="display:inline;">
+<form method="post" action="delete_collection.php" data-name="<?= htmlspecialchars($collection['collection_name'], ENT_QUOTES) ?>" onsubmit="return confirm('Delete the collection &quot;' + this.dataset.name + '&quot; and all its images? This cannot be undone.');" style="display:inline;">
+
 <input type="hidden" name="collection_id" value="<?= (int)$collection['collection_id'] ?>">
 <button type="submit" class="secondary">Delete</button>
 </form>

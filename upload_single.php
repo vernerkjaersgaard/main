@@ -10,6 +10,11 @@ use Intervention\Image\Drivers\Gd\Driver;
 
 header('Content-Type: application/json');
 
+// Decoding an image takes about 4 bytes per pixel. The server default (128 MB)
+// only fits about 30 megapixels, so this script gets more room. Together with
+// the pixel limit below, one upload can never use more than about 0.5 GB.
+ini_set('memory_limit', '768M');
+
 $collection_id = (int)($_POST['collection_id'] ?? 0);
 
 $stmt = $pdo->prepare("
@@ -85,6 +90,7 @@ if (!is_dir($thumbs_dir))
 
 $max_image_size   = 80 * 1024 * 1024;     // images: unchanged
 $max_foreign_size = 1024 * 1024 * 1024;   // foreign files (PSD, TIFF, ...): 1 GB
+$max_image_pixels = 120000000;            // images: at most 120 megapixels (width x height)
 
 $file = $_FILES['image'];
 $original_name = $file['name'];
@@ -182,6 +188,16 @@ if ($file_kind === 'image')
         $update = $pdo->prepare("UPDATE tb_images SET status = 'failed' WHERE image_id = ?");
         $update->execute([$image_id]);
         respond_error($original_name, 'Not a valid image.');
+    }
+
+    // A small file can declare enormous dimensions, and decoding it would
+    // use gigabytes of memory (about 4 bytes per pixel). Refuse such images
+    // before they are saved or decoded.
+    if ($image_info[0] < 1 || $image_info[1] < 1 || $image_info[0] * $image_info[1] > $max_image_pixels)
+    {
+        $update = $pdo->prepare("UPDATE tb_images SET status = 'failed' WHERE image_id = ?");
+        $update->execute([$image_id]);
+        respond_error($original_name, 'The image has too many pixels (maximum ' . round($max_image_pixels / 1000000) . ' megapixels).');
     }
 
     $destination = $originals_dir . '/' . $stored_filename;

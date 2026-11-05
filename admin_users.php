@@ -5,6 +5,14 @@ require_once __DIR__ . '/log.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST')
 {
+    // CSRF: every form on this page carries the session's secret token, so a
+    // request sent from another website (which can not know it) is refused.
+    if (!csrf_valid($_POST['csrf_token'] ?? null))
+    {
+        http_response_code(403);
+        exit('The form has expired or is not valid. Go back, reload the page and try again.');
+    }
+
     $target_user_id = (int)($_POST['user_id'] ?? 0);
     $post_action = $_POST['toggle_action'] ?? '';
 
@@ -208,8 +216,10 @@ require_once __DIR__ . '/header.php';
                 <td>
                     <?php if ((int)$user['user_id'] !== (int)$_SESSION['user_id']): ?>
                         <form method="post" style="display:inline;"
-                              onsubmit="return confirm('<?= $user['is_admin'] ? 'Revoke' : 'Grant' ?> admin access for <?= htmlspecialchars($user['username'], ENT_QUOTES) ?>?');">
-                            <input type="hidden" name="user_id" value="<?= (int)$user['user_id'] ?>">
+                              data-username="<?= htmlspecialchars($user['username'], ENT_QUOTES) ?>"
+                              data-verb="<?= $user['is_admin'] ? 'Revoke' : 'Grant' ?>"
+                              onsubmit="return confirmAdminToggle(this);">
+                            <input type="hidden" name="user_id" value="<?= (int)$user['user_id'] ?>"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
                             <input type="hidden" name="toggle_action" value="<?= $user['is_admin'] ? 'revoke' : 'grant' ?>">
                             <button type="submit" class="secondary">
                                 <?= $user['is_admin'] ? 'Revoke admin' : 'Grant admin' ?>
@@ -221,7 +231,7 @@ require_once __DIR__ . '/header.php';
                 </td>
                 <td>
                     <form method="post" style="display:flex; gap:0.3rem;">
-                        <input type="hidden" name="user_id" value="<?= (int)$user['user_id'] ?>">
+                        <input type="hidden" name="user_id" value="<?= (int)$user['user_id'] ?>"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
                         <input type="hidden" name="toggle_action" value="set_cap">
                         <input type="number" name="storage_cap_mb" value="<?= htmlspecialchars($user['storage_cap_mb'] ?? '') ?>" placeholder="Unlimited" min="0" style="width:100px;">
                         <button type="submit">Set</button>
@@ -229,7 +239,7 @@ require_once __DIR__ . '/header.php';
                 </td>
                 <td>
                     <form method="post" style="display:inline;">
-                        <input type="hidden" name="user_id" value="<?= (int)$user['user_id'] ?>">
+                        <input type="hidden" name="user_id" value="<?= (int)$user['user_id'] ?>"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
                         <input type="hidden" name="toggle_action" value="set_branding">
                         <input type="hidden" name="branding_enabled" value="<?= $user['branding_enabled'] ? '0' : '1' ?>">
                         <!--<?= $user['branding_enabled'] ? 'On' : 'Off' ?>-->
@@ -241,7 +251,7 @@ require_once __DIR__ . '/header.php';
                         <?php if ($user['watermark_enabled'] && (int)$user['locked_count'] > 0): ?>
                         onsubmit="return confirm('This account has <?= (int)$user['locked_count'] ?> locked image(s). They stay locked, but the customer will no longer be able to open the watermark settings. Switch watermarking off?');"
                         <?php endif; ?>>
-                        <input type="hidden" name="user_id" value="<?= (int)$user['user_id'] ?>">
+                        <input type="hidden" name="user_id" value="<?= (int)$user['user_id'] ?>"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
                         <input type="hidden" name="toggle_action" value="set_watermark">
                         <input type="hidden" name="watermark_enabled" value="<?= $user['watermark_enabled'] ? '0' : '1' ?>">
                         <?= $user['watermark_enabled'] ? 'On' : 'Off' ?>
@@ -254,8 +264,9 @@ require_once __DIR__ . '/header.php';
                 <td>
                     <?php if ((int)$user['user_id'] !== (int)$_SESSION['user_id']): ?>
                         <form method="post" style="display:inline;"
-                            onsubmit="return confirmUserDeletion(this, '<?= htmlspecialchars($user['username'], ENT_QUOTES) ?>');">
-                            <input type="hidden" name="user_id" value="<?= (int)$user['user_id'] ?>">
+                            data-username="<?= htmlspecialchars($user['username'], ENT_QUOTES) ?>"
+                            onsubmit="return confirmUserDeletion(this);">
+                            <input type="hidden" name="user_id" value="<?= (int)$user['user_id'] ?>"><input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
                             <input type="hidden" name="toggle_action" value="delete_user">
                             <input type="hidden" name="confirm_username" class="confirm-username-field">
                             <button type="submit" class="secondary">Delete Account</button>
@@ -270,8 +281,16 @@ require_once __DIR__ . '/header.php';
 </table>
 
 <script>
-    function confirmUserDeletion(form, username)
+    // The username is read from a data- attribute, never written into the
+    // JavaScript code itself, so a username can not inject script.
+    function confirmAdminToggle(form)
     {
+        return confirm(form.dataset.verb + ' admin access for ' + form.dataset.username + '?');
+    }
+
+    function confirmUserDeletion(form)
+    {
+        const username = form.dataset.username;
         const typed = prompt(`This will PERMANENTLY delete "${username}", all their projects, collections, and images.\n\nType the username exactly to confirm:`);
 
         if (typed !== username)
