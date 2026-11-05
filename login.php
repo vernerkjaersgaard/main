@@ -5,6 +5,7 @@ require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/log.php';
 
 $error = '';
+$unconfirmed = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST')
 {
@@ -25,39 +26,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
     }
     else
     {
-        $stmt = $pdo->prepare("SELECT user_id, username, password_hash, is_admin FROM tb_users WHERE email = ?");
+        $stmt = $pdo->prepare("SELECT user_id, username, password_hash, is_admin, email_verified_at FROM tb_users WHERE email = ?");
         $stmt->execute([$email]);
         $user = $stmt->fetch();
 
         if ($user && password_verify($password, $user['password_hash']))
         {
-            // New session id at login, so an id known before login is useless afterwards.
-            session_regenerate_id(true);
-
-            // Upgrade the stored hash if PHP's default algorithm or cost has moved on.
-            if (password_needs_rehash($user['password_hash'], PASSWORD_DEFAULT))
+            if ($user['email_verified_at'] === null)
             {
-                $rehash = $pdo->prepare("UPDATE tb_users SET password_hash = ? WHERE user_id = ?");
-                $rehash->execute([password_hash($password, PASSWORD_DEFAULT), $user['user_id']]);
+                // Right password, but the address has not been confirmed yet.
+                // Only someone who knows the password sees this message.
+                log_action($pdo, $user['user_id'], 'login_unconfirmed');
+
+                $unconfirmed = true;
+                $error = 'Please confirm your email address first. We sent a link to that address when you registered.';
             }
-
-            login_clear_failures($pdo, $email_key);
-
-            $_SESSION['user_id'] = $user['user_id'];
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['is_admin'] = $user['is_admin'];
-
-            // At this moment the plain password is known: if it does not meet
-            // the current rules, remember that so a banner can ask for a new one.
-            if (password_policy_error($password, $user['username'], $email) !== null)
+            else
             {
-                $_SESSION['password_weak'] = 1;
+                // New session id at login, so an id known before login is useless afterwards.
+                session_regenerate_id(true);
+
+                // Upgrade the stored hash if PHP's default algorithm or cost has moved on.
+                if (password_needs_rehash($user['password_hash'], PASSWORD_DEFAULT))
+                {
+                    $rehash = $pdo->prepare("UPDATE tb_users SET password_hash = ? WHERE user_id = ?");
+                    $rehash->execute([password_hash($password, PASSWORD_DEFAULT), $user['user_id']]);
+                }
+
+                login_clear_failures($pdo, $email_key);
+
+                $_SESSION['user_id'] = $user['user_id'];
+                $_SESSION['username'] = $user['username'];
+                $_SESSION['is_admin'] = $user['is_admin'];
+
+                // At this moment the plain password is known: if it does not meet
+                // the current rules, remember that so a banner can ask for a new one.
+                if (password_policy_error($password, $user['username'], $email) !== null)
+                {
+                    $_SESSION['password_weak'] = 1;
+                }
+
+                log_action($pdo, $user['user_id'], 'login');
+
+                header('Location: index.php');
+                exit;
             }
-
-            log_action($pdo, $user['user_id'], 'login');
-
-            header('Location: index.php');
-            exit;
         }
         else
         {
@@ -75,11 +88,14 @@ require_once __DIR__ . '/header.php';
 
 <h1>Log In</h1>
 
-<?php if (!empty($_GET['registered'])): ?>
-<p style="color:green;">Account created — please log in.</p>
+<?php if (!empty($_GET['confirmed'])): ?>
+<p style="color:green;">Email address confirmed — please log in.</p>
 <?php endif; ?>
 <?php if ($error): ?>
 <p style="color:red;"><?= htmlspecialchars($error) ?></p>
+<?php endif; ?>
+<?php if ($unconfirmed): ?>
+<p>Did the message not arrive? <a href="resend_confirmation.php">Send the confirmation link again</a>.</p>
 <?php endif; ?>
 
 <form method="post">
@@ -89,10 +105,10 @@ require_once __DIR__ . '/header.php';
 <button type="submit">Log In</button>
 </form>
 
-<?php if (registration_is_open()): /* CHANGED: link only shown while registration is open */ ?>
+<?php if (registration_is_open()): /* link only shown while registration is open */ ?>
 <p>Don't have an account? <a href="register.php">Register</a></p>
 <?php endif; ?>
 
-<?= render_info_notices($pdo) /* CHANGED: notices from tb_info, just above the footer */ ?>
+<?= render_info_notices($pdo) /* notices from tb_info, just above the footer */ ?>
 
 <?php require_once __DIR__ . '/footer.php'; ?>
