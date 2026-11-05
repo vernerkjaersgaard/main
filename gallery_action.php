@@ -272,7 +272,7 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
 
                 if (is_file($source_path))
                 {
-                    $zip->addFile($source_path, $entry_name); // CHANGED
+                    zip_add_file($zip, $source_path, $entry_name, $item['file_kind'] === 'image');
                 }
 
                 continue;
@@ -287,7 +287,7 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
 
             if ($action === 'download_full')
             {
-                $zip->addFile($source_path, $entry_name); // CHANGED
+                zip_add_file($zip, $source_path, $entry_name, $item['file_kind'] === 'image');
             }
             else
             {
@@ -297,10 +297,12 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
                 $resized = $manager->read($source_path);
                 $resized->scaleDown(width: $target_width);
 
-                $tmp_resized = tempnam(sys_get_temp_dir(), 'resize_') . '.jpg';
+                $tmp_base = tempnam(sys_get_temp_dir(), 'resize_');
+                $tmp_resized = $tmp_base . '.jpg';
                 $resized->save($tmp_resized);
 
-                $zip->addFile($tmp_resized, $entry_name); // CHANGED
+                zip_add_file($zip, $tmp_resized, $entry_name, true);
+                $temp_files_to_clean[] = $tmp_base;
                 $temp_files_to_clean[] = $tmp_resized;
             }
         }

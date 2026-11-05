@@ -23,6 +23,7 @@ function send_email($to_email, $subject, $body)
         $mail->setFrom(SMTP_FROM_EMAIL, SMTP_FROM_NAME);
         $mail->addAddress($to_email);
 
+        $mail->CharSet = PHPMailer::CHARSET_UTF8;
         $mail->isHTML(false);
         $mail->Subject = $subject;
         $mail->Body = $body;

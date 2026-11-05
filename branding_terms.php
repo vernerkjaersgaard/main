@@ -124,18 +124,18 @@ $history = $stmt->fetchAll();
 
 // A starting point the photographer can insert and then rewrite. Nothing is
 // saved until "Save terms" is clicked.
-$example_text = "TERMS OF USE FOR THESE IMAGES\n\n"
-    . "1. Copyright\n"
-    . "All images in this gallery are protected by copyright and remain the property of [photographer / company name].\n\n"
-    . "2. What you may do\n"
-    . "You may use the images you have received for [personal use / the purposes we agreed, for example your own website and social media]. Please credit [name] where reasonable.\n\n"
-    . "3. What you may not do\n"
-    . "Without our written permission you may not sell or license the images, pass them on to others for commercial use, or edit them in a way that changes their meaning.\n\n"
-    . "4. Availability\n"
-    . "This gallery link is available for [30] days. Please download the images you want to keep before it expires.\n\n"
-    . "5. Questions\n"
-    . "If you are unsure whether a use is covered, please contact us at [email address] before using the image.\n\n"
-    . "This is an example only. Replace everything in [brackets] and adjust the text to your own agreement with your customer.";
+$example_text = "BRUGSVILKÅR FOR DISSE BILLEDER\n\n"
+    . "1. Ophavsret\n"
+. "Alle billeder i dette galleri er beskyttet af ophavsret og forbliver [fotografens / firmaets navn]s ejendom.\n\n"
+. "2. Hvad du må\n"
+. "Du må bruge de billeder, du har modtaget, til [personlig brug / de formål, vi har aftalt, f.eks. din egen hjemmeside og sociale medier]. Angiv venligst [navn] som fotograf, hvor det er rimeligt.\n\n"
+. "3. Hvad du ikke må\n"
+. "Uden vores skriftlige tilladelse må du ikke sælge eller licensere billederne, give dem videre til andre til kommerciel brug eller redigere dem på en måde, der ændrer deres betydning.\n\n"
+. "4. Tilgængelighed\n"
+. "Dette gallerilink er tilgængeligt i [30] dage. Download venligst de billeder, du vil beholde, inden det udløber.\n\n"
+. "5. Spørgsmål\n"
+. "Hvis du er i tvivl om, hvorvidt en bestemt anvendelse er dækket, bedes du kontakte os på [e-mailadresse], inden du bruger billedet.\n\n"
+. "Dette er kun et eksempel. Erstat alt i [klammer], og tilpas teksten til din egen aftale med din kunde.";
 
 require_once __DIR__ . '/header.php';
 ?>

@@ -69,6 +69,8 @@ $on_admin_page = (strpos(basename($_SERVER['SCRIPT_NAME']), 'admin') === 0);
     $stmt = $pdo->prepare("SELECT storage_cap_mb FROM tb_users WHERE user_id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     $my_cap_mb = $stmt->fetchColumn();
+
+    $days_left = function_exists('subscription_days_remaining') ? subscription_days_remaining($pdo, (int)$_SESSION['user_id']) : null;
     ?>
 
     <li title="Users active in the last 5 minutes">
@@ -80,6 +82,12 @@ $on_admin_page = (strpos(basename($_SERVER['SCRIPT_NAME']), 'admin') === 0);
     <li title="Your storage usage">
         <?= format_bytes($my_usage_bytes) ?><?= $my_cap_mb !== null ? ' / ' . $my_cap_mb . ' MB' : ' (unlimited)' ?>
     </li>
+
+    <?php if ($days_left !== null): ?>
+        <li title="Days left of your subscription">
+        Remaining days: <?= (int)$days_left ?>
+        </li>
+    <?php endif; ?>
 
     <li><a href="projects.php">My Projects</a></li>
     <?php if (!empty($_SESSION['is_admin'])): ?>
