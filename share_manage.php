@@ -29,6 +29,13 @@ $valid_collection_ids = array_map('intval', array_column($project_collections, '
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST')
 {
+    // CSRF: refuse a form that did not come from this page.
+    if (!csrf_valid($_POST['csrf_token'] ?? null))
+    {
+        http_response_code(403);
+        exit('The form has expired or is not valid. Go back, reload the page and try again.');
+    }
+
     $post_action = $_POST['share_action'] ?? '';
 
     if ($post_action === 'create')
@@ -36,6 +43,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
         $ttl_input = trim($_POST['ttl_days'] ?? '');
         $ttl_days = ($ttl_input === '') ? null : (int)$ttl_input;
         $token = bin2hex(random_bytes(32));
+
+        // Optional note for the photographer only: who the link is for.
+        $label = trim($_POST['label'] ?? '');
+        $label = ($label === '') ? null : mb_substr($label, 0, 100);
 
         // Scope: empty = the whole project (as before), otherwise one collection.
         $scope_id = (int)($_POST['collection_id'] ?? 0);
@@ -52,11 +63,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
             $collection_id = $scope_id;
         }
 
-        $insert = $pdo->prepare("INSERT INTO tb_share_links (project_id, collection_id, token, ttl_days) VALUES (?, ?, ?, ?)");
-        $insert->execute([$project_id, $collection_id, $token, $ttl_days]);
+        $insert = $pdo->prepare("INSERT INTO tb_share_links (project_id, collection_id, token, ttl_days, label) VALUES (?, ?, ?, ?, ?)");
+        $insert->execute([$project_id, $collection_id, $token, $ttl_days, $label]);
 
         $detail = ($ttl_days !== null ? 'expires in ' . $ttl_days . ' days' : 'no expiry')
-            . ($collection_id !== null ? '; single collection' : '; whole project');
+            . ($collection_id !== null ? '; single collection' : '; whole project')
+            . ($label !== null ? '; label: ' . $label : '');
 
         log_action($pdo, $_SESSION['user_id'], 'share_link_created', $project_id, $collection_id, $detail);
     }
@@ -101,6 +113,7 @@ $base_url = BASE_URL;
 
 <form method="post">
     <input type="hidden" name="share_action" value="create">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
 
     <label>What should the link show?
         <select name="collection_id">
@@ -116,6 +129,9 @@ $base_url = BASE_URL;
     <label>Expires after how many days? (leave blank for never)
         <input type="number" name="ttl_days" min="1">
     </label>
+    <label>Label (only visible to you, for example who the link is for)
+        <input type="text" name="label" maxlength="100">
+    </label>
     <button type="submit">Create New Share Link</button>
 </form>
 
@@ -127,6 +143,7 @@ $base_url = BASE_URL;
     <table class="zebra">
         <thead>
             <tr>
+                <th>Label</th>
                 <th>Link</th>
                 <th>Shows</th>
                 <th>Created</th>
@@ -145,6 +162,7 @@ $base_url = BASE_URL;
                     strtotime($link['created_at'] . ' +' . $link['ttl_days'] . ' days') < time();
                 ?>
                 <tr>
+                    <td><?= htmlspecialchars($link['label'] ?? '') ?></td>
                     <td><input type="text" readonly value="<?= htmlspecialchars($share_url) ?>" style="width:100%;" onclick="this.select();"></td>
                     <td><?= $link['collection_id'] !== null ? htmlspecialchars($link['collection_name']) : 'Whole project' ?></td>
                     <td><?= htmlspecialchars($link['created_at']) ?></td>
@@ -161,8 +179,9 @@ $base_url = BASE_URL;
                     </td>
                     <td>
                         <?php if (!$is_revoked): ?>
-                            <form method="post" onsubmit="return confirm('Revoke this link? It will stop working immediately.');" style="display:inline;">
+                            <form method="post" data-label="<?= htmlspecialchars($link['label'] ?? '', ENT_QUOTES) ?>" onsubmit="return confirm('Revoke this link' + (this.dataset.label ? ' (' + this.dataset.label + ')' : '') + '? It will stop working immediately.');" style="display:inline;">
                                 <input type="hidden" name="share_action" value="revoke">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
                                 <input type="hidden" name="share_id" value="<?= $link['share_id'] ?>">
                                 <button type="submit">Revoke</button>
                             </form>

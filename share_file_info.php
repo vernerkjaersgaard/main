@@ -17,7 +17,7 @@ if (!preg_match('/^[a-f0-9]{64}$/', $token))
 // A project-level link has sl.collection_id = NULL and matches every
 // collection in its project, as before.
 $stmt = $pdo->prepare("
-    SELECT sl.ttl_days, sl.created_at, c.collection_name, sl.project_id
+    SELECT sl.ttl_days, sl.created_at, c.collection_name, sl.project_id, sl.label
     FROM tb_share_links sl
     JOIN tb_collections c ON c.project_id = sl.project_id
     WHERE sl.token = ? AND sl.revoked_at IS NULL AND c.collection_id = ?
@@ -75,7 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
             $update = $pdo->prepare("UPDATE tb_images SET notes = ? WHERE image_id = ?");
             $update->execute([$new_notes, $file_row['image_id']]);
 
-            log_action($pdo, null, 'share_note_added', $result['project_id'], $collection_id, 'on ' . $safe_current);
+            $via = (($result['label'] ?? '') !== '') ? ' | link: ' . $result['label'] : '';
+            log_action($pdo, null, 'share_note_added', $result['project_id'], $collection_id, mb_substr('on ' . $safe_current . $via, 0, 255));
         }
     }
 

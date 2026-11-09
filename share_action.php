@@ -3,6 +3,15 @@
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/log.php';
 
+// This script only accepts form submissions. A plain visit (reload, restored
+// tab, back button) gets "method not allowed", not a 404 that looks like a probe.
+if ($_SERVER['REQUEST_METHOD'] !== 'POST')
+{
+    http_response_code(405);
+    header('Allow: POST');
+    exit('Method not allowed. Go back to the gallery and try again.');
+}
+
 $token = $_POST['token'] ?? '';
 $collection_id = (int)($_POST['collection_id'] ?? 0);
 $action = $_POST['gallery_action'] ?? '';
@@ -18,7 +27,7 @@ if (!preg_match('/^[a-f0-9]{64}$/', $token))
 // A project-level link has sl.collection_id = NULL and matches every
 // collection in its project, as before.
 $stmt = $pdo->prepare("
-    SELECT sl.ttl_days, sl.created_at, sl.project_id, c.storage_path
+    SELECT sl.ttl_days, sl.created_at, sl.project_id, c.storage_path, sl.label
     FROM tb_share_links sl
     JOIN tb_collections c ON c.project_id = sl.project_id
     WHERE sl.token = ? AND sl.revoked_at IS NULL AND c.collection_id = ?
@@ -35,6 +44,9 @@ if (!$result || $is_expired)
     http_response_code(404);
     exit('This link is invalid or has expired.');
 }
+
+// Suffix for the activity log: which link (label) was used, if it has one.
+$via = (($result['label'] ?? '') !== '') ? ' | link: ' . $result['label'] : '';
 
 if (empty($ticked) || !is_array($ticked))
 {
@@ -99,7 +111,7 @@ if ($action === 'tag')
     $update = $pdo->prepare("UPDATE tb_images SET tag_color = ? WHERE image_id IN ($id_placeholders)");
     $update->execute(array_merge([$tag_color], $image_ids));
 
-    log_action($pdo, null, 'share_tag', $result['project_id'], $collection_id, count($image_ids) . ' item(s) tagged ' . $tag_color);
+    log_action($pdo, null, 'share_tag', $result['project_id'], $collection_id, mb_substr(count($image_ids) . ' item(s) tagged ' . $tag_color . $via, 0, 255));
 
     header('Location: share.php?token=' . urlencode($token) . '&tagged=' . count($image_ids));
     exit;
@@ -133,7 +145,7 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
     // Nothing released in the selection: no zip is built at all.
     if (empty($downloadable))
     {
-        log_action($pdo, null, 'share_download_blocked', $result['project_id'], $collection_id, $locked_skipped . ' locked item(s) requested');
+        log_action($pdo, null, 'share_download_blocked', $result['project_id'], $collection_id, mb_substr($locked_skipped . ' locked item(s) requested' . $via, 0, 255));
 
         header('Location: share.php?token=' . urlencode($token) . '&error=locked_only');
         exit;
@@ -144,7 +156,7 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
     // Only when the customer selected exactly that one released file.
     if (count($valid_images) === 1 && count($downloadable) === 1 && $downloadable[0]['file_kind'] === 'file' && $downloadable[0]['extension'] === 'zip')
     {
-        log_action($pdo, null, 'share_download_file', $result['project_id'], $collection_id, $downloadable[0]['stored_filename'] . ' (already a zip, served directly)');
+        log_action($pdo, null, 'share_download_file', $result['project_id'], $collection_id, mb_substr($downloadable[0]['stored_filename'] . ' (already a zip, served directly)' . $via, 0, 255));
 
         header('Location: share_file_download.php?token=' . urlencode($token) . '&collection_id=' . $collection_id . '&file=' . urlencode($downloadable[0]['stored_filename']));
         exit;
@@ -240,7 +252,7 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
     $token_list = implode(',', $tokens);
 
     log_action($pdo, null, 'share_' . $action, $result['project_id'], $collection_id,
-        count($downloadable) . ' item(s)' . ($locked_skipped > 0 ? ', ' . $locked_skipped . ' locked skipped' : ''));
+        mb_substr(count($downloadable) . ' item(s)' . ($locked_skipped > 0 ? ', ' . $locked_skipped . ' locked skipped' : '') . $via, 0, 255));
 
     // The skipped count is added only when there is one, so the address is
     // exactly what it was before for an ordinary download.

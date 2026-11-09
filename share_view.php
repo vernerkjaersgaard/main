@@ -17,7 +17,7 @@ if (!preg_match('/^[a-f0-9]{64}$/', $token))
 // A project-level link has sl.collection_id = NULL and matches every
 // collection in its project, as before.
 $stmt = $pdo->prepare("
-    SELECT sl.ttl_days, sl.created_at, c.collection_name, sl.project_id
+    SELECT sl.ttl_days, sl.created_at, c.collection_name, sl.project_id, sl.label
     FROM tb_share_links sl
     JOIN tb_collections c ON c.project_id = sl.project_id
     WHERE sl.token = ? AND sl.revoked_at IS NULL AND c.collection_id = ?
@@ -75,7 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
             $update = $pdo->prepare("UPDATE tb_images SET notes = ? WHERE image_id = ?");
             $update->execute([$new_notes, $image_row['image_id']]);
 
-            log_action($pdo, null, 'share_note_added', $result['project_id'], $collection_id, 'on ' . $safe_current);
+            $via = (($result['label'] ?? '') !== '') ? ' | link: ' . $result['label'] : '';
+            log_action($pdo, null, 'share_note_added', $result['project_id'], $collection_id, mb_substr('on ' . $safe_current . $via, 0, 255));
         }
     }
 
@@ -212,17 +213,22 @@ if (is_file($branding_file))
 </p>
 
 <script>
+function typingInField(e)
+{
+    return e.target.matches('textarea, input, select, [contenteditable]');
+}
+
 document.addEventListener('keydown', function (e)
 {
     <?php if ($prev_file): ?>
-    if (e.key === 'ArrowLeft')
+    if (e.key === 'ArrowLeft' && !typingInField(e))
     {
         window.location.href = 'share_view.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection_id ?>&file=<?= urlencode($prev_file) ?>';
     }
     <?php endif; ?>
 
     <?php if ($next_file): ?>
-    if (e.key === 'ArrowRight')
+    if (e.key === 'ArrowRight' && !typingInField(e))
     {
         window.location.href = 'share_view.php?token=<?= htmlspecialchars($token) ?>&collection_id=<?= $collection_id ?>&file=<?= urlencode($next_file) ?>';
     }
