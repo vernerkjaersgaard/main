@@ -127,6 +127,7 @@ Storage used: <?= format_bytes($my_usage_bytes) ?>
 <td>
 <form method="post" action="delete_project.php" data-name="<?= htmlspecialchars($project['project_name'], ENT_QUOTES) ?>" onsubmit="return confirm('Delete the ENTIRE project &quot;' + this.dataset.name + '&quot;, including ALL its collections and images? This cannot be undone.');" style="display:inline;">
 <input type="hidden" name="project_id" value="<?= (int)$project['project_id'] ?>">
+<input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
 <button type="submit" class="secondary">Delete</button>
 </form>
 </td>

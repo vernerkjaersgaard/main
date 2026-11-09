@@ -99,6 +99,7 @@ require_once __DIR__ . '/header.php';
 <form method="post" action="delete_collection.php" data-name="<?= htmlspecialchars($collection['collection_name'], ENT_QUOTES) ?>" onsubmit="return confirm('Delete the collection &quot;' + this.dataset.name + '&quot; and all its images? This cannot be undone.');" style="display:inline;">
 
 <input type="hidden" name="collection_id" value="<?= (int)$collection['collection_id'] ?>">
+<input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
 <button type="submit" class="secondary">Delete</button>
 </form>
 </td>

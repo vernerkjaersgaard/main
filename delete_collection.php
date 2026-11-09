@@ -4,6 +4,21 @@ require_once __DIR__ . '/auth_check.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/log.php';
 
+// Only a form submission from our own page is accepted: a plain visit gets
+// "method not allowed", and a missing or wrong CSRF token is refused.
+if ($_SERVER['REQUEST_METHOD'] !== 'POST')
+{
+    http_response_code(405);
+    header('Allow: POST');
+    exit('Method not allowed.');
+}
+
+if (!csrf_valid($_POST['csrf_token'] ?? null))
+{
+    http_response_code(403);
+    exit('The form has expired or is not valid. Go back, reload the page and try again.');
+}
+
 $collection_id = (int)($_POST['collection_id'] ?? 0);
 
 $stmt = $pdo->prepare("
