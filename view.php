@@ -156,17 +156,22 @@ require_once __DIR__ . '/header.php';
 </p>
 
 <script>
+function typingInField(e)
+{
+    return e.target.matches('textarea, input, select, [contenteditable]');
+}
+
 document.addEventListener('keydown', function (e)
 {
     <?php if ($prev_file): ?>
-    if (e.key === 'ArrowLeft')
+    if (e.key === 'ArrowLeft' && !typingInField(e))
     {
         window.location.href = 'view.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($prev_file) ?>';
     }
     <?php endif; ?>
 
     <?php if ($next_file): ?>
-    if (e.key === 'ArrowRight')
+    if (e.key === 'ArrowRight' && !typingInField(e))
     {
         window.location.href = 'view.php?collection_id=<?= $collection_id ?>&file=<?= urlencode($next_file) ?>';
     }
