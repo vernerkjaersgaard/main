@@ -132,6 +132,8 @@ $users = $pdo->query("
         u.branding_enabled,
         u.watermark_enabled,
         u.date_of_creation,
+        u.subscription_days,
+        GREATEST(0, CAST(u.subscription_days AS SIGNED) - DATEDIFF(CURDATE(), u.date_of_creation)) AS days_left,
         COUNT(DISTINCT p.project_id) AS project_count,
         COUNT(DISTINCT c.collection_id) AS collection_count,
         COALESCE(SUM(CASE WHEN i.status = 'complete' THEN i.file_size ELSE 0 END), 0) AS storage_bytes,
@@ -141,7 +143,7 @@ $users = $pdo->query("
     LEFT JOIN tb_projects p ON p.user_id = u.user_id
     LEFT JOIN tb_collections c ON c.project_id = p.project_id
     LEFT JOIN tb_images i ON i.collection_id = c.collection_id
-    GROUP BY u.user_id, u.username, u.email, u.is_admin, u.storage_cap_mb, u.branding_enabled, u.watermark_enabled, u.date_of_creation
+    GROUP BY u.user_id, u.username, u.email, u.is_admin, u.storage_cap_mb, u.branding_enabled, u.watermark_enabled, u.date_of_creation, u.subscription_days
     ORDER BY u.date_of_creation DESC
 ")->fetchAll();
 /*
@@ -190,6 +192,7 @@ require_once __DIR__ . '/header.php';
             <th>Username</th>
             <th>Email</th>
             <th>Registered</th>
+            <th>R-days:</th>
             <th>Projects</th>
             <th>Collections</th>
             <th>Images</th>
@@ -208,6 +211,7 @@ require_once __DIR__ . '/header.php';
                 <td><?= htmlspecialchars($user['username']) ?></td>
                 <td><?= htmlspecialchars($user['email']) ?></td>
                 <td><?= htmlspecialchars($user['date_of_creation']) ?></td>
+                <td><?= (int)$user['days_left'] ?> <small>of <?= (int)$user['subscription_days'] ?></small></td>
                 <td><?= (int)$user['project_count'] ?></td>
                 <td><?= (int)$user['collection_count'] ?></td>
                 <td><?= (int)$user['image_count'] ?></td>
