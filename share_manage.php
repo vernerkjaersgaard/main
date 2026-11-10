@@ -81,6 +81,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST')
 
         log_action($pdo, $_SESSION['user_id'], 'share_link_revoked', $project_id, null, 'share_id: ' . $share_id);
     }
+    elseif ($post_action === 'delete')
+    {
+        $share_id = (int)($_POST['share_id'] ?? 0);
+
+        // Only a link that is already revoked or expired can be removed.
+        $remove = $pdo->prepare("
+            DELETE FROM tb_share_links
+            WHERE share_id = ? AND project_id = ?
+              AND (revoked_at IS NOT NULL
+                   OR (ttl_days IS NOT NULL AND DATE_ADD(created_at, INTERVAL ttl_days DAY) < NOW()))
+        ");
+        $remove->execute([$share_id, $project_id]);
+
+        log_action($pdo, $_SESSION['user_id'], 'share_link_deleted', $project_id, null, 'share_id: ' . $share_id);
+    }
 
     header('Location: share_manage.php?project_id=' . $project_id);
     exit;
@@ -102,6 +117,8 @@ $preselect = (int)($_GET['collection_id'] ?? 0);
 require_once __DIR__ . '/header.php';
 
 $base_url = BASE_URL;
+$show_inactive = (($_GET['show'] ?? '') === 'all');
+$inactive_count = 0;
 ?>
 
 <p><a href="collections.php?project_id=<?= $project_id ?>">&larr; Back to <?= htmlspecialchars($project['project_name']) ?></a></p>
@@ -160,6 +177,16 @@ $base_url = BASE_URL;
                 $is_revoked = $link['revoked_at'] !== null;
                 $is_expired = $link['ttl_days'] !== null &&
                     strtotime($link['created_at'] . ' +' . $link['ttl_days'] . ' days') < time();
+
+                if ($is_revoked || $is_expired)
+                {
+                    $inactive_count++;
+
+                    if (!$show_inactive)
+                    {
+                        continue;
+                    }
+                }
                 ?>
                 <tr>
                     <td><?= htmlspecialchars($link['label'] ?? '') ?></td>
@@ -178,12 +205,19 @@ $base_url = BASE_URL;
                         <?php endif; ?>
                     </td>
                     <td>
-                        <?php if (!$is_revoked): ?>
+                        <?php if (!$is_revoked && !$is_expired): ?>
                             <form method="post" data-label="<?= htmlspecialchars($link['label'] ?? '', ENT_QUOTES) ?>" onsubmit="return confirm('Revoke this link' + (this.dataset.label ? ' (' + this.dataset.label + ')' : '') + '? It will stop working immediately.');" style="display:inline;">
                                 <input type="hidden" name="share_action" value="revoke">
                                 <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
                                 <input type="hidden" name="share_id" value="<?= $link['share_id'] ?>">
                                 <button type="submit">Revoke</button>
+                            </form>
+                        <?php else: ?>
+                            <form method="post" onsubmit="return confirm('Remove this link from the list? The link is already dead; this only tidies the list.');" style="display:inline;">
+                                <input type="hidden" name="share_action" value="delete">
+                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrf_token()) ?>">
+                                <input type="hidden" name="share_id" value="<?= $link['share_id'] ?>">
+                                <button type="submit" class="secondary">Delete</button>
                             </form>
                         <?php endif; ?>
                     </td>
@@ -191,6 +225,18 @@ $base_url = BASE_URL;
             <?php endforeach; ?>
         </tbody>
     </table>
+
+    <?php if ($inactive_count > 0): ?>
+        <p>
+            <small>
+                <?php if ($show_inactive): ?>
+                    <a href="share_manage.php?project_id=<?= $project_id ?>">Hide revoked and expired links</a>
+                <?php else: ?>
+                    <a href="share_manage.php?project_id=<?= $project_id ?>&amp;show=all">Show <?= $inactive_count ?> revoked or expired link<?= $inactive_count === 1 ? '' : 's' ?></a>
+                <?php endif; ?>
+            </small>
+        </p>
+    <?php endif; ?>
 <?php endif; ?>
 
 <?php require_once __DIR__ . '/footer.php'; ?>
