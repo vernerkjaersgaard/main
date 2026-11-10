@@ -113,7 +113,8 @@ if ($action === 'tag')
 
     log_action($pdo, null, 'share_tag', $result['project_id'], $collection_id, mb_substr(count($image_ids) . ' item(s) tagged ' . $tag_color . $via, 0, 255));
 
-    header('Location: share.php?token=' . urlencode($token) . '&tagged=' . count($image_ids));
+    // Back to the page at the first tagged image, not the top of the page.
+    header('Location: share.php?token=' . urlencode($token) . '&tagged=' . count($image_ids) . '#f-' . $collection_id . '-' . $safe_files[0]);
     exit;
 }
 
