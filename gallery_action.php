@@ -218,6 +218,7 @@ if ($action === 'delete')
 if (in_array($action, ['download_full', 'download_medium', 'download_small'], true))
 {
     require_once __DIR__ . '/vendor/autoload.php';
+    require_once dirname(__DIR__) . '/zip_functions.php';
 
     // "Don't double-zip a lone zip": if the ENTIRE ticked selection is
     // exactly one item, AND it's a foreign file with a .zip extension,
@@ -239,83 +240,7 @@ if (in_array($action, ['download_full', 'download_medium', 'download_small'], tr
         mkdir($user_temp_dir, 0775, true);
     }
 
-    $originals_dir = $collection['storage_path'] . '/originals';
-    $files_dir     = $collection['storage_path'] . '/files';
-    $chunks = array_chunk($valid_images, 70);
-    $tokens = [];
-
-    foreach ($chunks as $chunk)
-    {
-        $token = bin2hex(random_bytes(16));
-        $zip_path = $user_temp_dir . '/' . $token . '.zip';
-        $temp_files_to_clean = [];
-        $used_names = []; // CHANGED: names already used inside this zip
-
-        $zip = new ZipArchive();
-        $zip->open($zip_path, ZipArchive::CREATE);
-
-        foreach ($chunk as $item)
-        {
-            $filename = $item['stored_filename'];
-
-            // CHANGED: the name inside the zip is the original file name
-            // (made safe and unique). The file is still read from disk
-            // under its stored name.
-            $entry_name = unique_zip_entry_name($item['original_filename'], $filename, $used_names);
-
-            // Foreign files are never resized — they're added as-is
-            // regardless of which size tier was requested, since
-            // "medium"/"small" has no meaning for a PSD or a ZIP.
-            if ($item['file_kind'] === 'file')
-            {
-                $source_path = $files_dir . '/' . $filename;
-
-                if (is_file($source_path))
-                {
-                    zip_add_file($zip, $source_path, $entry_name, $item['file_kind'] === 'image');
-                }
-
-                continue;
-            }
-
-            $source_path = $originals_dir . '/' . $filename;
-
-            if (!is_file($source_path))
-            {
-                continue;
-            }
-
-            if ($action === 'download_full')
-            {
-                zip_add_file($zip, $source_path, $entry_name, $item['file_kind'] === 'image');
-            }
-            else
-            {
-                $target_width = ($action === 'download_medium') ? 1600 : 1080;
-
-                $manager = new \Intervention\Image\ImageManager(new \Intervention\Image\Drivers\Gd\Driver());
-                $resized = $manager->read($source_path);
-                $resized->scaleDown(width: $target_width);
-
-                $tmp_base = tempnam(sys_get_temp_dir(), 'resize_');
-                $tmp_resized = $tmp_base . '.jpg';
-                $resized->save($tmp_resized);
-
-                zip_add_file($zip, $tmp_resized, $entry_name, true);
-                $temp_files_to_clean[] = $tmp_base;
-                $temp_files_to_clean[] = $tmp_resized;
-            }
-        }
-
-        $zip->close();
-
-        foreach ($temp_files_to_clean as $tmp_file)
-        {
-            unlink($tmp_file);
-        }
-
-        $tokens[] = $token;
-    }
+    $tokens = build_download_zips($valid_images, $collection['storage_path'], $action, $user_temp_dir);
 
     $token_list = implode(',', $tokens);
 

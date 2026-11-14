@@ -111,4 +111,23 @@ require_once __DIR__ . '/header.php';
 
 <?= render_info_notices($pdo) /* notices from tb_info, just above the footer */ ?>
 
+<?php
+// Allowed file types, listed from tb_allowed_filetypes (active ones only).
+// A database problem here must never break the login page.
+$allowed_types = [];
+
+try
+{
+    $type_stmt = $pdo->query("SELECT DISTINCT extension FROM tb_allowed_filetypes WHERE is_active = 1 ORDER BY extension");
+    $allowed_types = $type_stmt->fetchAll(PDO::FETCH_COLUMN);
+}
+catch (Throwable $e)
+{
+    error_log('login.php: could not read tb_allowed_filetypes: ' . $e->getMessage());
+}
+?>
+<?php if ($allowed_types): ?>
+<p style="font-size:0.85rem; color:#666;">Allowed file types: <?= htmlspecialchars(implode(', ', array_map('strtoupper', $allowed_types))) ?></p>
+<?php endif; ?>
+
 <?php require_once __DIR__ . '/footer.php'; ?>

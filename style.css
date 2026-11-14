@@ -1,30 +1,70 @@
 /* style.css */
 
-
+/*
+ * Cool White and Ink Blue theme
+ */
 
 [data-theme="light"],
 :root:not([data-theme="dark"])
 {
---pico-primary: #013950;              /* Prussian Blue */
---pico-primary-hover: #F5906F;        /* Cantaloupe Orange */
---pico-primary-background: #7AC9D0;   /* Pale Teal */
---pico-primary-underline: #7AC9D0;    /* Pale Teal */
---pico-background-color: #f0f0f0;     /* #dedeec   */
+    --pico-primary: #183b63;
+    --pico-primary-hover: #102d4d;
+    --pico-primary-focus: rgba(24, 59, 99, 0.22);
+    --pico-primary-background: #183b63;
+    --pico-primary-underline: rgba(24, 59, 99, 0.45);
+
+    --pico-background-color: #f5f8fb;
+    --pico-card-background-color: #ffffff;
+    --pico-color: #172033;
+    --pico-muted-color: #64748b;
+    --pico-muted-border-color: #d8e1eb;
+    --pico-border-color: #d8e1eb;
+    --pico-primary-inverse: #ffffff;
+
+    --page-background: #f5f8fb;
+    --surface: #ffffff;
+    --surface-subtle: #edf2f7;
+    --text-primary: #172033;
+    --text-secondary: #64748b;
+    --ink-blue: #183b63;
+    --ink-blue-hover: #102d4d;
+    --border: #d8e1eb;
+    --border-strong: #b9c8d8;
+    --focus-ring: rgba(24, 59, 99, 0.25);
 }
 
+/* Tag colours */
 
+:root
+{
+    --tag-red: #b94a48;
+    --tag-green: #39805a;
+    --tag-blue: #416f9f;
+    --tag-yellow: #b98216;
+    --tag-purple: #76519c;
+}
+
+/* Make things smaller */
+
+:root
+{
+    --pico-font-size: 87.5%;
+    --pico-spacing: 0.60rem;
+}
+
+/* Images */
 
 .thumbnail
 {
     width: 100%;
-    border-radius: 4px;
-    border: 1px solid var(--pico-primary);
+    border-radius: 6px;
+    border: 1px solid var(--border);
     display: block;
 }
 
 .thumbnail:hover
 {
-    border-color: var(--pico-primary-hover);
+    border-color: var(--ink-blue);
 }
 
 .full-image
@@ -32,20 +72,12 @@
     max-width: 100%;
     max-height: 80vh;
     border-radius: 6px;
-    border: 1px solid var(--pico-primary);
+    border: 1px solid var(--border);
     display: block;
     margin: 0 auto;
 }
 
-:root
-{
-    --tag-red: #D64545;
-    --tag-green: #3A9D5D;
-    --tag-blue: #3B6EA5;
-    --tag-yellow: #E0A800;
-    --tag-purple: #8A4FBE;
-}
-
+/* Tag summary */
 
 .tag-summary
 {
@@ -71,33 +103,120 @@
     border-radius: 50%;
 }
 
-.tag-swatch.tag-red    { background: var(--tag-red); }
-.tag-swatch.tag-green  { background: var(--tag-green); }
-.tag-swatch.tag-blue   { background: var(--tag-blue); }
-.tag-swatch.tag-yellow { background: var(--tag-yellow); }
-.tag-swatch.tag-purple { background: var(--tag-purple); }
-.tag-swatch.tag-none   { background: #ccc; }
-
-/* make things smaller */
-:root
+.tag-swatch.tag-red
 {
-    --pico-font-size: 87.5%;
-    --pico-spacing: 0.60rem;
+    background: var(--tag-red);
 }
 
+.tag-swatch.tag-green
+{
+    background: var(--tag-green);
+}
 
-.thumb-checkbox { border-color: var(--pico-primary) !important; }
+.tag-swatch.tag-blue
+{
+    background: var(--tag-blue);
+}
 
-.thumb-checkbox.tag-red    { background-color: var(--tag-red) !important; }
-.thumb-checkbox.tag-green  { background-color: var(--tag-green) !important; }
-.thumb-checkbox.tag-blue   { background-color: var(--tag-blue) !important; }
-.thumb-checkbox.tag-yellow { background-color: var(--tag-yellow) !important; }
-.thumb-checkbox.tag-purple { background-color: var(--tag-purple) !important; }
+.tag-swatch.tag-yellow
+{
+    background: var(--tag-yellow);
+}
+
+.tag-swatch.tag-purple
+{
+    background: var(--tag-purple);
+}
+
+.tag-swatch.tag-none
+{
+    background: #cbd5e1;
+}
+
+/* Thumbnail checkbox */
+
+.thumb-checkbox
+{
+    border-color: var(--ink-blue) !important;
+    margin: 0 !important;
+}
+
+/* Tag box */
+
+.tag-box
+{
+    position: absolute;
+    top: 8px;
+    left: 34px;
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 2px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+    z-index: 1;
+    pointer-events: none;
+}
+
+.tag-box.tag-none
+{
+    background: rgba(255, 255, 255, 0.25);
+}
+
+.tag-box.tag-red
+{
+    background: var(--tag-red);
+}
+
+.tag-box.tag-green
+{
+    background: var(--tag-green);
+}
+
+.tag-box.tag-blue
+{
+    background: var(--tag-blue);
+}
+
+.tag-box.tag-yellow
+{
+    background: var(--tag-yellow);
+}
+
+.tag-box.tag-purple
+{
+    background: var(--tag-purple);
+}
+
+.thumb-checkbox.tag-red
+{
+    background-color: var(--tag-red) !important;
+}
+
+.thumb-checkbox.tag-green
+{
+    background-color: var(--tag-green) !important;
+}
+
+.thumb-checkbox.tag-blue
+{
+    background-color: var(--tag-blue) !important;
+}
+
+.thumb-checkbox.tag-yellow
+{
+    background-color: var(--tag-yellow) !important;
+}
+
+.thumb-checkbox.tag-purple
+{
+    background-color: var(--tag-purple) !important;
+}
+
+/* Share viewer */
 
 .share-viewer-bg
 {
-    background-color: #1a1a1a;
-    background-color: #555555;
+    background-color: #172033;
     padding: 2rem;
     border-radius: 6px;
     text-align: center;
@@ -120,12 +239,15 @@
 
 .share-viewer-bg a:hover
 {
-    color: #FFFFFF;
+    color: #ffffff;
 }
+
+/* Site header */
 
 .site-header
 {
-    background-color: var(--pico-primary);
+    background-color: #ffffff;
+    border-bottom: 1px solid var(--border);
     padding: 1rem 1.5rem;
 }
 
@@ -133,29 +255,34 @@
 .site-header strong,
 .site-header li
 {
-    color: var(--pico-primary-inverse, #FFFFFF);
+    color: var(--ink-blue);
 }
 
 .site-header a:hover
 {
-    color: var(--tag-blue);
+    color: var(--ink-blue-hover);
 }
+
+/* Notes */
 
 .notes-box
 {
-    background: #f7f7f7;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 6px;
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
 }
+
+/* Note badge */
 
 .has-note-badge
 {
     position: absolute;
     top: 8px;
     right: 8px;
-    background: var(--pico-primary);
-    color: #FFFFFF;
+    background: var(--ink-blue);
+    color: #ffffff;
     width: 20px;
     height: 20px;
     border-radius: 50%;
@@ -167,17 +294,19 @@
     z-index: 1;
 }
 
+/* File badges */
+
 .file-badge
 {
     width: 100%;
     aspect-ratio: 1 / 1;
     border-radius: 6px;
-    border: 1px solid var(--pico-primary);
+    border: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: #f0f0f0;
+    background: var(--surface);
     padding: 0.5rem;
     text-align: center;
     box-sizing: border-box;
@@ -187,20 +316,22 @@
 {
     font-size: 1.4rem;
     font-weight: bold;
-    color: var(--pico-primary);
+    color: var(--ink-blue);
     margin-bottom: 0.4rem;
 }
 
 .file-badge-name
 {
     font-size: 0.75rem;
-    color: #444;
+    color: var(--text-secondary);
     word-break: break-word;
     overflow: hidden;
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
 }
+
+/* Status indicators */
 
 .status-dot
 {
@@ -212,9 +343,22 @@
     vertical-align: middle;
 }
 
-.status-green  { background: var(--tag-green); }
-.status-yellow { background: var(--tag-yellow); }
-.status-red    { background: var(--tag-red); }
+.status-green
+{
+    background: var(--tag-green);
+}
+
+.status-yellow
+{
+    background: var(--tag-yellow);
+}
+
+.status-red
+{
+    background: var(--tag-red);
+}
+
+/* Alternative file badge */
 
 .filebadge
 {
@@ -225,8 +369,8 @@
     width: 100%;
     aspect-ratio: 1 / 1;
     border-radius: 6px;
-    border: 3px solid var(--pico-primary);
-    background: #f0f0f0;
+    border: 2px solid var(--border);
+    background: var(--surface);
     text-align: center;
     padding: 0.5rem;
     box-sizing: border-box;
@@ -238,14 +382,14 @@
 {
     font-size: 1.4rem;
     font-weight: bold;
-    color: var(--pico-primary);
+    color: var(--ink-blue);
     text-transform: uppercase;
 }
 
 .filebadge-name
 {
     font-size: 0.75rem;
-    color: #555;
+    color: var(--text-secondary);
     margin-top: 0.4rem;
     word-break: break-word;
     max-width: 100%;
@@ -255,27 +399,7 @@
     -webkit-box-orient: vertical;
 }
 
-a.tag-filter
-{
-    text-decoration: none;
-    color: inherit;
-    cursor: pointer;
-    padding: 0.15rem 0.6rem;
-    border-radius: 999px;
-    border: 1px solid transparent;
-}
-
-a.tag-filter:hover
-{
-    border-color: var(--pico-primary);
-}
-
-a.tag-filter.active
-{
-    background: #FFFFFF;
-    border-color: var(--pico-primary);
-    font-weight: bold;
-}
+/* Tag filters */
 
 a.tag-filter
 {
@@ -289,13 +413,15 @@ a.tag-filter
 
 a.tag-filter:hover
 {
-    border-color: var(--pico-primary);
+    border-color: var(--ink-blue);
+    color: var(--ink-blue);
 }
 
 a.tag-filter.active
 {
-    background: #FFFFFF;
-    border-color: var(--pico-primary);
+    background: #eaf0f6;
+    border-color: var(--ink-blue);
+    color: var(--ink-blue);
     font-weight: bold;
 }
 
@@ -306,15 +432,25 @@ a.tag-filter.active
     align-items: center;
 }
 
+/* Admin header */
+
 .site-header-admin
 {
-    background-color: #9B1C1C;
+    background-color: #8f2730;
+    border-bottom-color: #8f2730;
+}
+
+.site-header-admin a,
+.site-header-admin strong,
+.site-header-admin li
+{
+    color: #ffffff;
 }
 
 .admin-badge
 {
-    background: #FFFFFF;
-    color: #9B1C1C;
+    background: #ffffff;
+    color: #8f2730;
     font-weight: bold;
     font-size: 0.75rem;
     letter-spacing: 0.05em;
@@ -323,25 +459,30 @@ a.tag-filter.active
     margin-left: 0.75rem;
 }
 
+/* Zebra tables */
+
 table.zebra tbody tr:nth-child(odd) td
 {
-    background-color: rgba(255, 255, 255, 0.55);
+    background-color: #ffffff;
 }
 
 table.zebra tbody tr:nth-child(even) td
 {
-    background-color: rgba(1, 57, 80, 0.08);
+    background-color: #f1f5f9;
 }
 
 table.zebra tbody tr:hover td
 {
-    background-color: rgba(122, 201, 208, 0.35);
+    background-color: #e4edf6;
 }
 
-.info-notice {
+/* Information notice */
+
+.info-notice
+{
     background: #fff8e1;
-    color: #333;
-    border-left: 4px solid #f0b400;
+    color: #333333;
+    border-left: 4px solid #d49b16;
     border-radius: 4px;
     padding: 0.6rem 0.9rem;
     margin: 0.75rem 0;
@@ -349,18 +490,23 @@ table.zebra tbody tr:hover td
 }
 
 /* File name shown under the image in the viewers */
-.image-filename {
-    color: inherit;      /* normal text colour of the page (follows light/dark mode) */
+
+.image-filename
+{
+    color: inherit;
     font-weight: 600;
     word-break: break-word;
 }
 
 /* The customer viewer sits on a dark band: always light text there */
-.share-viewer-bg .image-filename {
-    color: #fff;
+
+.share-viewer-bg .image-filename
+{
+    color: #ffffff;
 }
 
 /* Collection tiles on the share page */
+
 .collection-intro
 {
     margin-bottom: 1rem;
@@ -379,23 +525,29 @@ table.zebra tbody tr:hover td
     display: block;
     text-decoration: none;
     color: inherit;
-    border: 1px solid var(--pico-muted-border-color, #dfe3ea);
-    border-radius: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
     overflow: hidden;
-    background: var(--pico-card-background-color, transparent);
+    background: var(--surface);
+    transition:
+        border-color 0.15s ease,
+        box-shadow 0.15s ease,
+        transform 0.15s ease;
 }
 
 .collection-tile:hover,
 .collection-tile:focus-visible
 {
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
-    outline: 2px solid var(--pico-primary, #2f6fed);
+    border-color: var(--ink-blue);
+    box-shadow: 0 6px 18px rgba(24, 59, 99, 0.14);
+    outline: 2px solid var(--focus-ring);
+    transform: translateY(-1px);
 }
 
 .collection-tile-cover
 {
     height: 150px;
-    background: rgba(128, 128, 128, 0.15);
+    background: var(--surface-subtle);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -426,14 +578,14 @@ table.zebra tbody tr:hover td
 {
     margin: 0;
     font-size: 0.9rem;
-    color: var(--pico-muted-color, #5d6676);
+    color: var(--text-secondary);
 }
 
 .collection-tile-go
 {
     font-weight: 600;
     font-size: 0.9rem;
-    color: var(--pico-primary, #2f6fed);
+    color: var(--ink-blue);
 }
 
 .back-to-collections
@@ -443,7 +595,8 @@ table.zebra tbody tr:hover td
     margin-left: 0.75rem;
 }
 
-/* Action bar on the share page: action dropdown and Apply on one line */
+/* Action bar on the share page */
+
 .action-bar
 {
     display: flex;
@@ -495,12 +648,12 @@ table.zebra tbody tr:hover td
 {
     0%, 100%
     {
-        box-shadow: 0 0 0 0 rgba(47, 111, 237, 0.55);
+        box-shadow: 0 0 0 0 rgba(24, 59, 99, 0.45);
     }
 
     50%
     {
-        box-shadow: 0 0 0 8px rgba(47, 111, 237, 0);
+        box-shadow: 0 0 0 8px rgba(24, 59, 99, 0);
     }
 }
 
@@ -509,16 +662,17 @@ table.zebra tbody tr:hover td
     .action-bar button.needs-apply
     {
         animation: none;
-        outline: 3px solid rgba(47, 111, 237, 0.7);
+        outline: 3px solid rgba(24, 59, 99, 0.65);
     }
 }
 
-   .brand-terms
-   {
-       max-width: 70ch;
-   }
+.brand-terms
+{
+    max-width: 70ch;
+}
 
 /* Full screen view button, next to Apply in the action bar */
+
 .action-bar .fullscreen-button
 {
     width: auto;
@@ -534,19 +688,44 @@ table.zebra tbody tr:hover td
     }
 }
 
-/* Full screen view button: a light tint of the Apply colour, with a border and text in that colour */
+/* Full screen view button */
+
 .action-bar a.fullscreen-button[role="button"]
 {
-    background-color: color-mix(in srgb, var(--pico-primary-background) 16%, Canvas);
-    border-color: color-mix(in srgb, var(--pico-primary-background) 60%, Canvas);
-    color: var(--pico-primary-background);
+    background-color: color-mix(
+        in srgb,
+        var(--ink-blue) 10%,
+        var(--surface)
+    );
+    border-color: color-mix(
+        in srgb,
+        var(--ink-blue) 55%,
+        var(--surface)
+    );
+    color: var(--ink-blue);
     font-weight: 600;
 }
 
 .action-bar a.fullscreen-button[role="button"]:hover,
 .action-bar a.fullscreen-button[role="button"]:focus
 {
-    background-color: color-mix(in srgb, var(--pico-primary-background) 28%, Canvas);
-    border-color: var(--pico-primary-background);
-    color: var(--pico-primary-background);
+    background-color: color-mix(
+        in srgb,
+        var(--ink-blue) 18%,
+        var(--surface)
+    );
+    border-color: var(--ink-blue);
+    color: var(--ink-blue-hover);
 }
+
+/* Photographer's own logo in the header */
+
+.own-brand-logo
+{
+    max-height: 40px;
+    width: auto;
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0 0.6rem 0 0;
+}
+

@@ -337,8 +337,9 @@ if (is_file($branding_file))
                     <?php foreach ($images as $image): ?>
                         <div style="position:relative;" id="f-<?= $collection['collection_id'] ?>-<?= htmlspecialchars($image['stored_filename']) ?>" data-tag="<?= $image['tag_color'] ?>" data-note="<?= !empty($image['notes']) ? '1' : '0' ?>">
                             <input type="checkbox" name="ticked[]" value="<?= htmlspecialchars($image['stored_filename']) ?>"
-                            class="thumb-checkbox<?= $image['tag_color'] !== 'none' ? ' tag-' . $image['tag_color'] : '' ?>"
+                            class="thumb-checkbox"
                             style="position:absolute; top:8px; left:8px; width:20px; height:20px; z-index:1;">
+                            <span class="tag-box tag-<?= htmlspecialchars($image['tag_color']) ?>" title="<?= $image['tag_color'] === 'none' ? 'No colour tag' : 'Tagged ' . htmlspecialchars($image['tag_color']) ?>"></span>
                             <?php if (!empty($image['notes'])): ?>
                                 <span class="has-note-badge" title="Has notes">&#9998;</span>
                             <?php endif; ?>

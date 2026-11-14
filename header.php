@@ -13,6 +13,41 @@ require_once dirname(__DIR__) . '/general_functions.php';
 
 <?php
 $on_admin_page = (strpos(basename($_SERVER['SCRIPT_NAME']), 'admin') === 0);
+
+// The photographer's own branding (logo and name) in the header, except on admin pages.
+$own_brand_name = null;
+$own_brand_logo = null;
+
+if (isset($_SESSION['user_id']) && !$on_admin_page)
+{
+    try
+    {
+        $brand_stmt = $pdo->prepare("
+            SELECT b.display_name, b.logo_filename, b.logo_version
+            FROM tb_users u
+            JOIN tb_branding b ON b.user_id = u.user_id
+            WHERE u.user_id = ? AND u.branding_enabled = 1
+        ");
+        $brand_stmt->execute([(int)$_SESSION['user_id']]);
+        $brand_row = $brand_stmt->fetch();
+
+        if ($brand_row)
+        {
+            $brand_name = trim((string)$brand_row['display_name']);
+            $own_brand_name = ($brand_name === '') ? null : mb_substr($brand_name, 0, 100);
+
+            if (preg_match('/^[A-Za-z0-9._-]+\z/', (string)$brand_row['logo_filename']))
+            {
+                $own_brand_logo = 'branding_logo.php?v=' . (int)$brand_row['logo_version'];
+            }
+        }
+    }
+    catch (Throwable $e)
+    {
+        // Branding is cosmetic: on any problem the normal header is shown.
+        error_log('header.php branding query failed: ' . $e->getMessage());
+    }
+}
 ?>
 
 
@@ -28,7 +63,7 @@ $on_admin_page = (strpos(basename($_SERVER['SCRIPT_NAME']), 'admin') === 0);
 <body>
 <nav class="container-fluid site-header<?= $on_admin_page ? ' site-header-admin' : '' ?>">
 <ul>
-<li><a href="index.php"><strong>Pics.zorum.dk</strong></a><?php if ($on_admin_page): ?> <span class="admin-badge">ADMIN</span><?php endif; ?></li>
+<li><a href="index.php"><?php if ($own_brand_logo !== null): ?><img src="<?= htmlspecialchars($own_brand_logo, ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($own_brand_name ?? 'Logo', ENT_QUOTES, 'UTF-8') ?>" class="own-brand-logo"><?php endif; ?><?php if ($own_brand_logo === null || $own_brand_name !== null): ?><strong><?= htmlspecialchars($own_brand_name ?? 'Pics.zorum.dk') ?></strong><?php endif; ?></a><?php if ($on_admin_page): ?> <span class="admin-badge">ADMIN</span><?php endif; ?></li>
 </ul>
 <ul>
 <?php if (isset($_SESSION['user_id'])): ?>
@@ -106,6 +141,7 @@ $on_admin_page = (strpos(basename($_SERVER['SCRIPT_NAME']), 'admin') === 0);
 <?php endif; ?>
 </ul>
 </nav>
+ 
 <main class="container">
 
 <?php if (!empty($_SESSION['password_weak']) && basename($_SERVER['SCRIPT_NAME']) !== 'change_password.php'): ?>
