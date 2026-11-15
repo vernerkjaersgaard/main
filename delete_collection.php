@@ -42,36 +42,6 @@ $project_id = $collection['project_id'];
 // the collection's name still exists right now to reference in the log.
 log_action($pdo, $_SESSION['user_id'], 'delete_collection', $project_id, $collection_id, $collection['collection_name']);
 
-function delete_directory_recursive($dir)
-{
-if (!is_dir($dir))
-    {
-return;
-    }
-
-    $items = scandir($dir);
-
-foreach ($items as $item)
-    {
-if ($item === '.' || $item === '..')
-        {
-continue;
-        }
-
-        $path = $dir . '/' . $item;
-
-if (is_dir($path))
-        {
-            delete_directory_recursive($path);
-        }
-else
-        {
-            unlink($path);
-        }
-    }
-
-    rmdir($dir);
-}
 
 delete_directory_recursive($collection['storage_path']);
 

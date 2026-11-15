@@ -37,36 +37,6 @@ exit('Project not found.');
 // say "some project was deleted", not which one.
 log_action($pdo, $_SESSION['user_id'], 'delete_project', $project_id, null, $project['project_name']);
 
-function delete_directory_recursive($dir)
-{
-if (!is_dir($dir))
-    {
-return;
-    }
-
-    $items = scandir($dir);
-
-foreach ($items as $item)
-    {
-if ($item === '.' || $item === '..')
-        {
-continue;
-        }
-
-        $path = $dir . '/' . $item;
-
-if (is_dir($path))
-        {
-            delete_directory_recursive($path);
-        }
-else
-        {
-            unlink($path);
-        }
-    }
-
-    rmdir($dir);
-}
 
 $stmt = $pdo->prepare("SELECT collection_id, storage_path FROM tb_collections WHERE project_id = ?");
 $stmt->execute([$project_id]);
